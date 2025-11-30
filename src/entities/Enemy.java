@@ -20,11 +20,13 @@ public class Enemy {
     private BufferedImage sprite;
     private boolean alive = true;
     private int flashRed = 0;
-    private BufferedImage idleImg;
+    private BufferedImage[] idleFrames;
     private BufferedImage[] walkFrames;
     private int currentFrame = 0;
     private int frameDelay = 10;
     private int frameTimer = 0;
+    private int idleCurrentFrame = 0;
+    private int idleFrameTimer = 0;
     
     private boolean facingLeft = false;
     
@@ -51,48 +53,34 @@ public class Enemy {
 
     private void loadSprites() {
         try {
-            //FOR WALKING
-            idleImg = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/enemy_idle.png"));
-            walkFrames = new BufferedImage[] {
-                
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_000.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_001.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_002.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_003.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_004.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_005.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_006.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_007.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_008.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_009.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_010.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_011.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_012.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_013.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_014.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_015.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_016.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Walking_017.png")),
-            };
-            
-          //FOR ATTACKING
-           attackFrames = new BufferedImage[] {  
-                
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_000.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_001.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_002.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_003.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_004.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_005.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_006.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_007.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_008.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_009.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_010.png")),
-                ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Golem_01_Attacking_011.png")),
+            // FOR IDLE - Using Idle.png spritesheet (640x128, 5 frames in a single row)
+            BufferedImage idleSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Idle.png"));
+            int idleFrameWidth = 128; // 640 / 5
+            int idleFrameHeight = 128;
+            idleFrames = new BufferedImage[5];
+            for (int i = 0; i < 5; i++) {
+                idleFrames[i] = idleSpriteSheet.getSubimage(i * idleFrameWidth, 0, idleFrameWidth, idleFrameHeight);
+            }
 
-            };
-            sprite = idleImg; // default image
+
+            //FOR WALKING - Using Walk.png spritesheet (640x128, 5 frames in a single row)
+            BufferedImage walkSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Walk.png"));
+            int frameWidth = 128; // 640 / 5
+            int frameHeight = 128;
+            walkFrames = new BufferedImage[5];
+            for (int i = 0; i < 5; i++) {
+                walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
+            }
+            
+            // FOR ATTACKING - Using Attack_1.png spritesheet (512x128, 4 frames in a single row)
+            BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
+            int attackFrameWidth = 128; // 512 / 4
+            int attackFrameHeight = 128;
+            attackFrames = new BufferedImage[4];
+            for (int i = 0; i < 4; i++) {
+                attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
+            }
+            sprite = idleFrames[0]; // default image
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -100,8 +88,8 @@ public class Enemy {
     public Enemy(int x, int y) {
         this.x = (double) x;
         this.y = (double) y;
-        this.width = 60; // reduced width
-        this.height = 60; // reduced height
+        this.width = 128; // Set to frame width
+        this.height = 128; // Set to frame height
         this.hp = 400;
         this.speed = 0.8; // Further reduced speed
 
@@ -172,7 +160,7 @@ public class Enemy {
 
         facingLeft = dx < 0;  // face left if player is to the left
 
-        if (dist > 10 && !attacking) { // Move toward player only if not in the middle of an attack
+        if (dist > 1 && !attacking) { // Move toward player only if not in the middle of an attack
             double moveX = (dx / dist) * speed;
             double moveY = (dy / dist) * speed;
 
@@ -220,7 +208,13 @@ public class Enemy {
                 }
             } else {
                 // If not attacking and close, set to idle and manage cooldown
-                sprite = idleImg;
+                // Animate idle
+                idleFrameTimer++;
+                if (idleFrameTimer >= frameDelay) {
+                    idleCurrentFrame = (idleCurrentFrame + 1) % idleFrames.length;
+                    idleFrameTimer = 0;
+                }
+                sprite = idleFrames[idleCurrentFrame];
                 if (attackCooldown > 0) {
                     attackCooldown--;
                 }
@@ -229,22 +223,34 @@ public class Enemy {
     }
 
 
-    public void draw(Graphics g, int screenX, int screenY) {
+    public void draw(Graphics g, int screenX, int screenY, Player player) {
         if (!alive) return;
 
+        int drawX = screenX;
+        double dist = Math.sqrt(Math.pow(x - player.getX(), 2) + Math.pow(y - player.getY(), 2));
+
+        // Apply an offset during attack or idle to make the enemy appear closer to the player.
+        if (attacking || (!attacking && dist <= 100)) { // Apply offset if attacking or idle and close
+            int attackOffset = 40; // Adjust this value as needed
+            if (facingLeft) {
+                drawX -= attackOffset;
+            } else {
+                drawX += attackOffset;
+            }
+        }
+        
         if (facingLeft) {
-            g.drawImage(sprite, screenX + width, screenY, -width, height, null);  // flip horizontally
+            g.drawImage(sprite, drawX + width, screenY, -width, height, null);  // flip horizontally
         } else {
-            g.drawImage(sprite, screenX, screenY, width, height, null);
+            g.drawImage(sprite, drawX, screenY, width, height, null);
         }
 
-        // HP bar (using 400 as max HP)
+        // HP bar (using 400 as max HP) - drawn at original position
         g.setColor(Color.WHITE);
         g.fillRect(screenX, screenY - 10, width, 5);
         g.setColor(Color.GREEN);
         g.fillRect(screenX, screenY - 10, (int) (width * (hp / 400.0)), 5);
     }
-
  
     public Rectangle getBounds() {
         return new Rectangle((int) x, (int) y, width, height);

@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import entities.Enemy;
 
 public class SlashAttack {
     public int x, y;

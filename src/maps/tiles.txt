@@ -6,3 +6,13 @@
 3,/assets/tiles/earth.png,0,Earth
 4,/assets/tiles/floor01.png,0,Floor
 5,/assets/tiles/hut.png,1,Hut
+6,/assets/tiles/road00.png,0,Road00
+7,/assets/tiles/road02.png,0,Road02
+8,/assets/tiles/road04.png,0,Road04
+9,/assets/tiles/road05.png,0,Road05
+10,/assets/tiles/road07.png,0,Road07
+11,/assets/tiles/TREE 1 - DAY.png,1,Tree
+12,/assets/tiles/road01.png,0,Road01
+13,/assets/tiles/road03.png,0,Road03
+14,/assets/tiles/road06.png,0,Road06
+15,/assets/tiles/road08.png,0,Road08

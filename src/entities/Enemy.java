@@ -94,9 +94,6 @@ public class Enemy {
         this.speed = 0.8; // Further reduced speed
 
         loadSprites();
-
-        // Placeholder red square (replace with image later)
-        sprite = null;
     }
 
 

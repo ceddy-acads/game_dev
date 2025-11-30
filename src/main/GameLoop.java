@@ -5,7 +5,9 @@ import java.awt.*;
 import java.awt.event.*; // Import AWT event classes for KeyAdapter and KeyEvent
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.List;
 import input.KeyHandler;
+import entities.Enemy;
 import entities.Player;
 import entities.SlashAttack;
 import entities.SkillWAttack;
@@ -27,6 +29,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private Player player;
     private TileManager tileM; // Tile manager for rendering tiles
     private Hotbar hotbar;
+    private List<Enemy> enemies;
     private GameOverCallback gameOverCallback; // Callback for game over
 
     public GameLoop(GameOverCallback gameOverCallback) { // Modified constructor
@@ -57,7 +60,12 @@ public class GameLoop extends JLayeredPane implements Runnable {
         hotbar = new Hotbar(WIDTH, HEIGHT, gameInventory);
         gameInventory.setBounds(0, 0, WIDTH, HEIGHT); 
         gameInventory.setVisible(false); 
-        this.add(gameInventory, JLayeredPane.PALETTE_LAYER); 
+        this.add(gameInventory, JLayeredPane.PALETTE_LAYER);
+
+        // Initialize enemies
+        enemies = new ArrayList<>();
+        enemies.add(new Enemy(500, 500));
+        enemies.add(new Enemy(600, 600));
     }
 
     public void start() {
@@ -148,6 +156,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Update player
         player.update(deltaTime);
 
+        // Update enemies
+        for (Enemy enemy : enemies) {
+            enemy.update(player.getX(), player.getY(), player);
+        }
+
         // Handle freeze skill
         Rectangle freezeArea = player.getFreezeArea();
         if (freezeArea != null) {
@@ -196,6 +209,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Draw player
         player.draw(g, playerScreenX, playerScreenY);
+
+        // Draw enemies
+        for (Enemy enemy : enemies) {
+            int enemyScreenX = enemy.getX() - cameraX;
+            int enemyScreenY = enemy.getY() - cameraY;
+            enemy.draw(g, enemyScreenX, enemyScreenY, player);
+        }
 
         // === SKILL ANIMATIONS ===
         // Draw Slash Q skill attacks

@@ -32,6 +32,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private List<Enemy> enemies;
     private GameOverCallback gameOverCallback; // Callback for game over
 
+    // Skill icons
+    private Image skillIcePiercerIcon;
+    private Image skillLightningStormIcon;
+    private Image skillFireSplashIcon;
+
     public GameLoop(GameOverCallback gameOverCallback) { // Modified constructor
         this.gameOverCallback = gameOverCallback;
 
@@ -66,6 +71,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         enemies = new ArrayList<>();
         enemies.add(new Enemy(500, 500));
         enemies.add(new Enemy(600, 600));
+
+        // Load skill icons
+        loadSkillIcons();
     }
 
     public void start() {
@@ -186,7 +194,26 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Handle freeze skill
         Rectangle freezeArea = player.getFreezeArea();
         if (freezeArea != null) {
+            for (Enemy enemy : enemies) {
+                if (enemy.isAlive() && freezeArea.intersects(enemy.getBounds())) {
+                    enemy.freeze(60); // Freeze for 1 second (60 frames at 60 FPS)
+                    enemy.takeDamage(player.getTotalAttack()); // Inflict damage
+                    System.out.println("Ice Piercer dealt " + player.getTotalAttack() + " damage to enemy!");
+                }
+            }
             player.clearFreezeArea();
+        }
+
+        // Handle lightning storm skill
+        Rectangle lightningArea = player.getLightningArea();
+        if (lightningArea != null) {
+            for (Enemy enemy : enemies) {
+                if (enemy.isAlive() && lightningArea.intersects(enemy.getBounds())) {
+                    enemy.takeDamage(player.getTotalAttack() * 2); // Inflict double damage
+                    System.out.println("Lightning Storm dealt " + (player.getTotalAttack() * 2) + " damage to enemy!");
+                }
+            }
+            player.clearLightningArea();
         }
 
         // Check if player is dead
@@ -262,23 +289,130 @@ public class GameLoop extends JLayeredPane implements Runnable {
     }
 
     private void drawHotbarKeys(Graphics2D g2d) {
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Arial", Font.BOLD, 12));
-
         int slotSize = 48;
-        int numSlots = 5;
+        int numSlots = 3; // Reduced from 5 to 3 skill slots
         int hotbarWidth = numSlots * slotSize;
-        int hotbarX = (WIDTH - hotbarWidth) / 2;
+        int hotbarX = (WIDTH - hotbarWidth) / 2; // Centers the 3 slots horizontally
         int hotbarY = HEIGHT - slotSize - 10;
 
-        String[] keys = {"", "", "B", "N", "M"}; 
-        for (int i = 2; i < numSlots; i++) {
-            String key = keys[i];
-            FontMetrics fm = g2d.getFontMetrics();
-            int stringWidth = fm.stringWidth(key);
-            int x = hotbarX + i * slotSize + (slotSize - stringWidth) / 2;
-            int y = hotbarY - 5; 
-            g2d.drawString(key, x, y);
+        // Draw skill icons and cooldown overlays
+        for (int i = 0; i < numSlots; i++) {
+            int slotX = hotbarX + i * slotSize;
+            int slotY = hotbarY;
+
+            boolean onCooldown = false;
+            float cooldownProgress = 0f;
+
+            int cooldownMax = 0;
+            if (i == 0) { // B - Fire Splash
+                drawFireIcon(g2d, slotX, slotY, slotSize);
+                if (player.getBCooldown() > 0) {
+                    onCooldown = true;
+                    cooldownProgress = (float) player.getBCooldown() / player.getBCooldownMax();
+                    cooldownMax = player.getBCooldownMax();
+                }
+            } else if (i == 1) { // N - Ice Piercer
+                drawIceIcon(g2d, slotX, slotY, slotSize);
+                if (player.getNCooldown() > 0) {
+                    onCooldown = true;
+                    cooldownProgress = (float) player.getNCooldown() / player.getNCooldownMax();
+                    cooldownMax = player.getNCooldownMax();
+                }
+            } else if (i == 2) { // M - Lightning Storm
+                drawLightningIcon(g2d, slotX, slotY, slotSize);
+                if (player.getMCooldown() > 0) {
+                    onCooldown = true;
+                    cooldownProgress = (float) player.getMCooldown() / player.getMCooldownMax();
+                    cooldownMax = player.getMCooldownMax();
+                }
+            }
+
+            // Draw cooldown overlay
+            if (onCooldown) {
+                g2d.setColor(new Color(0, 0, 0, 150));
+                g2d.fillRect(slotX, slotY, slotSize, (int) (slotSize * cooldownProgress));
+
+                // Draw cooldown text
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(new Font("Arial", Font.BOLD, 10));
+                String timeLeft = String.format("%.1f", cooldownProgress * (cooldownMax / 60.0f));
+                FontMetrics fm = g2d.getFontMetrics();
+                int textWidth = fm.stringWidth(timeLeft);
+                int textX = slotX + (slotSize - textWidth) / 2;
+                int textY = slotY + slotSize / 2 + fm.getAscent() / 2;
+                g2d.drawString(timeLeft, textX, textY);
+            }
+        }
+    }
+
+    private void drawFireIcon(Graphics2D g2d, int x, int y, int size) {
+        if (skillFireSplashIcon != null) {
+            // Draw the 32x32 image centered in the 48x48 slot
+            g2d.drawImage(skillFireSplashIcon, x + 8, y + 8, 32, 32, null);
+        } else {
+            // Fallback: Draw a simple red flame/triangle
+            int[] xPoints = {x + size/2, x + size/4, x + 3*size/4};
+            int[] yPoints = {y + size/4, y + 3*size/4, y + 3*size/4};
+            g2d.setColor(Color.RED);
+            g2d.fillPolygon(xPoints, yPoints, 3);
+
+            // Add some orange outline
+            g2d.setColor(Color.ORANGE);
+            g2d.drawPolygon(xPoints, yPoints, 3);
+        }
+    }
+
+    private void drawIceIcon(Graphics2D g2d, int x, int y, int size) {
+        if (skillIcePiercerIcon != null) {
+            // Draw the 32x32 image centered in the 48x48 slot
+            g2d.drawImage(skillIcePiercerIcon, x + 8, y + 8, 32, 32, null);
+        } else {
+            // Fallback: Draw a simple blue snowflake/diamond
+            int centerX = x + size/2;
+            int centerY = y + size/2;
+            int radius = size/3;
+
+            g2d.setColor(Color.BLUE);
+            // Draw diamond shape
+            int[] xPoints = {centerX, centerX + radius/2, centerX, centerX - radius/2};
+            int[] yPoints = {centerY - radius, centerY, centerY + radius, centerY};
+            g2d.fillPolygon(xPoints, yPoints, 4);
+
+            // Add white highlights
+            g2d.setColor(Color.WHITE);
+            g2d.drawLine(centerX - radius/2, centerY, centerX + radius/2, centerY);
+            g2d.drawLine(centerX, centerY - radius, centerX, centerY + radius);
+        }
+    }
+
+    private void drawLightningIcon(Graphics2D g2d, int x, int y, int size) {
+        if (skillLightningStormIcon != null) {
+            // Draw the 32x32 image centered in the 48x48 slot
+            g2d.drawImage(skillLightningStormIcon, x + 8, y + 8, 32, 32, null);
+        } else {
+            // Fallback: Draw a simple yellow lightning bolt
+            g2d.setColor(Color.YELLOW);
+            int[] xPoints = {x + size/3, x + size/2, x + 2*size/3, x + size/2};
+            int[] yPoints = {y + size/4, y + size/4, y + size/2, y + 3*size/4};
+            g2d.fillPolygon(xPoints, yPoints, 4);
+
+            // Add black outline
+            g2d.setColor(Color.BLACK);
+            g2d.drawPolyline(xPoints, yPoints, 4);
+        }
+    }
+
+    private void loadSkillIcons() {
+        try {
+            skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
+            skillLightningStormIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_lightningstorm.png")).getImage();
+            skillFireSplashIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_firesplash.png")).getImage();
+        } catch (Exception e) {
+            System.err.println("Failed to load skill icons: " + e.getMessage());
+            // Fallback to programmatically drawn icons if images fail to load
+            skillIcePiercerIcon = null;
+            skillLightningStormIcon = null;
+            skillFireSplashIcon = null;
         }
     }
 

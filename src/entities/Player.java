@@ -17,9 +17,11 @@ public class Player {
     private int wCooldown = 0;
     private final int W_COOLDOWN_MAX = 60; // 1 sec
     private int bCooldown = 0;
-    private final int B_COOLDOWN_MAX = 300; // 5 sec
+    private final int B_COOLDOWN_MAX = 180; // 3 sec
     private int nCooldown = 0;
-    private final int N_COOLDOWN_MAX = 300; // 5 sec
+    private final int N_COOLDOWN_MAX = 420; // 7 sec
+    private int mCooldown = 0;
+    private final int M_COOLDOWN_MAX = 720; // 12 sec
 
     //HP of the character
     private int maxHp = 100;
@@ -52,6 +54,7 @@ public class Player {
     private static final int HURT = 4; // New state for taking damage
     private static final int FIRESPLASH = 5;
     private static final int ICEPIERCER = 6; // New state for Ice Piercer skill
+    private static final int LIGHTNINGSTORM = 7; // New state for Lightning Storm skill
     private int state = IDLE;  // Start in idle state
 
     // Animation frames [direction][frameIndex]
@@ -62,6 +65,7 @@ public class Player {
     private Image[][] hurtFrames;
     private Image[][] firesplashFrames;
     private Image[][] icepiercerFrames; // New array for Ice Piercer animation frames
+    private Image[][] lightningstormFrames; // New array for Lightning Storm animation frames
     private Image currentImg;  // General image
     private int deathDirection = DOWN;
     private int frameIndex = 0;        // Default for walking
@@ -96,6 +100,8 @@ public class Player {
 
     // Freeze skill area
     private Rectangle freezeArea = null;
+    // Lightning storm skill area
+    private Rectangle lightningArea = null;
 
     public ArrayList<SlashAttack> getSlashes() {
         return slashes;
@@ -166,6 +172,7 @@ public class Player {
         this.wCooldown = 0;
         this.bCooldown = 0;
         this.nCooldown = 0;
+        this.mCooldown = 0;
         this.slashes.clear();
         this.skillWAttacks.clear();
     }
@@ -289,6 +296,21 @@ public class Player {
             icepiercerFrames[DOWN_LEFT] = icepiercerFrames[LEFT];
             icepiercerFrames[DOWN_RIGHT] = icepiercerFrames[RIGHT];
         }
+
+        lightningstormFrames = new Image[8][6];
+        BufferedImage lightningstormSpriteSheet = loadSpriteSheet("/assets/characters/player_lightningstorm.png");
+        if (lightningstormSpriteSheet != null) {
+            for (int i = 0; i < 6; i++) {
+                lightningstormFrames[DOWN][i] = getSubImage(lightningstormSpriteSheet, i, 0);
+                lightningstormFrames[LEFT][i] = getSubImage(lightningstormSpriteSheet, i, 1);
+                lightningstormFrames[RIGHT][i] = getSubImage(lightningstormSpriteSheet, i, 2);
+                lightningstormFrames[UP][i] = getSubImage(lightningstormSpriteSheet, i, 3);
+            }
+            lightningstormFrames[UP_LEFT] = lightningstormFrames[LEFT];
+            lightningstormFrames[UP_RIGHT] = lightningstormFrames[RIGHT];
+            lightningstormFrames[DOWN_LEFT] = lightningstormFrames[LEFT];
+            lightningstormFrames[DOWN_RIGHT] = lightningstormFrames[RIGHT];
+        }
     }
     
     private BufferedImage loadSpriteSheet(String path) {
@@ -362,6 +384,7 @@ public class Player {
         if (wCooldown > 0) wCooldown--;
         if (bCooldown > 0) bCooldown--;
         if (nCooldown > 0) nCooldown--;
+        if (mCooldown > 0) mCooldown--;
 
         // --- Q Attack: cooldown-limited, one press = one attack ---
         if (keyH.skillSPACE && qCooldown == 0) { // Changed to skillSPACE
@@ -389,6 +412,13 @@ public class Player {
             useSkillN();
             nCooldown = N_COOLDOWN_MAX;
             keyH.skillN = false; // Reset to prevent continuous skill use
+        }
+
+        // --- M Attack: cooldown-limited, one press = one attack ---
+        if (keyH.skillM && mCooldown == 0) {
+            useSkillM();
+            mCooldown = M_COOLDOWN_MAX;
+            keyH.skillM = false; // Reset to prevent continuous skill use
         }
 
         // Movement input aggregated
@@ -429,7 +459,7 @@ public class Player {
         
         boolean isAttacking = !slashes.isEmpty() || !skillWAttacks.isEmpty();
         // Only update state if not in a non-interruptible state
-        if (state != FIRESPLASH && state != HURT && state != DYING && state != ICEPIERCER) {
+        if (state != FIRESPLASH && state != HURT && state != DYING && state != ICEPIERCER && state != LIGHTNINGSTORM) {
             boolean isMoving = (dx != 0 || dy != 0);
 
             if (isAttacking) {
@@ -497,6 +527,20 @@ public class Player {
                     currentImg = firesplashFrames[currentDirection][frameIndex];
                 }
                 break;
+            case LIGHTNINGSTORM:
+                accumulatedAnimationTime += deltaTime;
+                if (accumulatedAnimationTime >= playerFrameDuration) {
+                    frameIndex++;
+                    accumulatedAnimationTime -= playerFrameDuration;
+                    if (frameIndex >= 6) { // Lightning Storm has 6 frames
+                        frameIndex = 0;
+                        state = IDLE;
+                    }
+                }
+                if (frameIndex < 6) {
+                    currentImg = lightningstormFrames[currentDirection][frameIndex];
+                }
+                break;
             case HURT:
                 // Similar logic as DYING and HURT at the top of update()
                 break;
@@ -529,20 +573,7 @@ public class Player {
                 break;
         }
 
-        // Skills B/N/M
-        if (keyH.skillB) {
-            useSkillB();
-            keyH.skillB = false; // Reset to prevent continuous skill use
-        }
-        if (keyH.skillN) {
-            useSkillN();
-            keyH.skillN = false; // Reset to prevent continuous skill use
-        }
-        if (keyH.skillM) {
-            state = ATTACKING;
-            useSkillM();
-            keyH.skillM = false; // Reset to prevent continuous skill use
-        }
+        // All skills are now handled above with proper cooldown checking
     }
 
     public void draw(Graphics g, int screenX, int screenY) {
@@ -660,6 +691,22 @@ public class Player {
         freezeArea = null;
     }
 
+    public Rectangle getLightningArea() {
+        return lightningArea;
+    }
+
+    public void clearLightningArea() {
+        lightningArea = null;
+    }
+
+    // Cooldown getters
+    public int getBCooldown() { return bCooldown; }
+    public int getBCooldownMax() { return B_COOLDOWN_MAX; }
+    public int getNCooldown() { return nCooldown; }
+    public int getNCooldownMax() { return N_COOLDOWN_MAX; }
+    public int getMCooldown() { return mCooldown; }
+    public int getMCooldownMax() { return M_COOLDOWN_MAX; }
+
     public void useSkillB() {
         int drawX = (int) Math.round(px);
         int drawY = (int) Math.round(py);
@@ -691,7 +738,16 @@ public class Player {
         int centerY = (int) Math.round(py);
         freezeArea = new Rectangle(centerX - freezeRadius, centerY - freezeRadius, freezeRadius * 2, freezeRadius * 2);
     }
-    public void useSkillM() { System.out.println("Skill M used"); }
+    public void useSkillM() {
+        state = LIGHTNINGSTORM;
+        frameIndex = 0;
+        accumulatedAnimationTime = 0f;
+        // Set lightning area around player
+        int lightningRadius = 120; // pixels, slightly larger than freeze
+        int centerX = (int) Math.round(px);
+        int centerY = (int) Math.round(py);
+        lightningArea = new Rectangle(centerX - lightningRadius, centerY - lightningRadius, lightningRadius * 2, lightningRadius * 2);
+    }
 
     // Method to set TileManager reference for collision detection
     public void setTileManager(Object tileManager) {

@@ -43,6 +43,7 @@ public class Player {
     private double speed;
     private KeyHandler keyH;
     private Object tileManager; // Reference to TileManager for collision
+    private java.util.List<NPC> npcs; // Reference to NPCs for collision
 
     // State constants
     private static final int IDLE = 0;
@@ -404,27 +405,67 @@ public class Player {
             dy *= 0.7071067811865476;
         }
 
-        // Apply movement with tile collision detection using smaller collision box
+        // Apply movement with tile and NPC collision detection using smaller collision box
+        Rectangle playerBounds = new Rectangle(
+            (int) Math.round(px - collisionWidth / 2.0),
+            (int) Math.round(py - collisionHeight / 2.0),
+            collisionWidth, collisionHeight);
+
+        // Try horizontal movement
+        double proposedX = px + dx;
+        Rectangle proposedXBounds = new Rectangle(
+            (int) Math.round(proposedX - collisionWidth / 2.0),
+            (int) Math.round(py - collisionHeight / 2.0),
+            collisionWidth, collisionHeight);
+
+        boolean canMoveX = true;
         if (tileManager != null) {
-            // Try horizontal movement
-            double proposedX = px + dx;
             int topLeftX = (int) Math.round(proposedX - collisionWidth / 2.0);
             int topLeftY = (int) Math.round(py - collisionHeight / 2.0);
-            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
-                px = proposedX;
+            if (!((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+                canMoveX = false;
             }
+        }
+        // Check NPC collision for horizontal movement
+        if (npcs != null) {
+            for (NPC npc : npcs) {
+                if (proposedXBounds.intersects(npc.getBounds())) {
+                    canMoveX = false;
+                    break;
+                }
+            }
+        }
+        if (canMoveX) {
+            px = proposedX;
+            playerBounds = proposedXBounds;
+        }
 
-            // Try vertical movement
-            double proposedY = py + dy;
-            topLeftX = (int) Math.round(px - collisionWidth / 2.0);
-            topLeftY = (int) Math.round(proposedY - collisionHeight / 2.0);
-            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
-                py = proposedY;
+        // Try vertical movement
+        double proposedY = py + dy;
+        Rectangle proposedYBounds = new Rectangle(
+            (int) Math.round(px - collisionWidth / 2.0),
+            (int) Math.round(proposedY - collisionHeight / 2.0),
+            collisionWidth, collisionHeight);
+
+        boolean canMoveY = true;
+        if (tileManager != null) {
+            int topLeftX = (int) Math.round(px - collisionWidth / 2.0);
+            int topLeftY = (int) Math.round(proposedY - collisionHeight / 2.0);
+            if (!((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+                canMoveY = false;
             }
-        } else {
-            // No tile manager, free movement
-            px += dx;
-            py += dy;
+        }
+        // Check NPC collision for vertical movement
+        if (npcs != null) {
+            for (NPC npc : npcs) {
+                if (proposedYBounds.intersects(npc.getBounds())) {
+                    canMoveY = false;
+                    break;
+                }
+            }
+        }
+        if (canMoveY) {
+            py = proposedY;
         }
         
         boolean isAttacking = !slashes.isEmpty() || !skillWAttacks.isEmpty();
@@ -696,5 +737,10 @@ public class Player {
     // Method to set TileManager reference for collision detection
     public void setTileManager(Object tileManager) {
         this.tileManager = tileManager;
+    }
+
+    // Method to set NPCs reference for collision detection
+    public void setNPCs(java.util.List<NPC> npcs) {
+        this.npcs = npcs;
     }
 }

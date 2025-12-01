@@ -13,6 +13,7 @@ import entities.SlashAttack;
 import entities.SkillWAttack;
 import entities.InventoryUI;
 import entities.Hotbar;
+import entities.NPC;
 import tile.TileManager;
 
 public class GameLoop extends JLayeredPane implements Runnable { 
@@ -30,6 +31,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private TileManager tileM; // Tile manager for rendering tiles
     private Hotbar hotbar;
     private List<Enemy> enemies;
+    private List<NPC> npcs;
     private GameOverCallback gameOverCallback; // Callback for game over
 
     public GameLoop(GameOverCallback gameOverCallback) { // Modified constructor
@@ -66,6 +68,12 @@ public class GameLoop extends JLayeredPane implements Runnable {
         enemies = new ArrayList<>();
         enemies.add(new Enemy(500, 500));
         enemies.add(new Enemy(600, 600));
+
+        // Initialize NPCs
+        npcs = new ArrayList<>();
+        npcs.add(new NPC(356, 224)); // Place old man at row 13, column 22
+        npcs.get(0).setTileManager(tileM); // Pass TileManager reference for collision
+        player.setNPCs(npcs); // Pass NPCs reference to player for collision detection
     }
 
     public void start() {
@@ -161,6 +169,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
             enemy.update(player.getX(), player.getY(), player);
         }
 
+        // Update NPCs
+        for (NPC npc : npcs) {
+            npc.update();
+        }
+
         // Check for slash attack collisions with enemies
         for (SlashAttack slash : player.getSlashes()) {
             for (Enemy enemy : enemies) {
@@ -237,6 +250,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
             int enemyScreenX = enemy.getX() - cameraX;
             int enemyScreenY = enemy.getY() - cameraY;
             enemy.draw(g, enemyScreenX, enemyScreenY, player);
+        }
+
+        // Draw NPCs
+        for (NPC npc : npcs) {
+            int npcScreenX = npc.getX() - cameraX;
+            int npcScreenY = npc.getY() - cameraY;
+            npc.draw(g, npcScreenX, npcScreenY);
         }
 
         // === SKILL ANIMATIONS ===

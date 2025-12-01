@@ -102,7 +102,7 @@ public class Enemy {
     }
 
 
-    public void update(int playerX, int playerY, Player player) {
+    public void update(int playerX, int playerY, Player player, int cameraX, int cameraY, int viewportWidth, int viewportHeight) {
         if (!alive) return;
 
         // Handle freeze effect
@@ -111,6 +111,8 @@ public class Enemy {
             // Skip all movement and attack logic while frozen
             return;
         }
+
+
 
         if (!player.isAlive()) {
             // Player is dead, retreat by moving away from player's position
@@ -160,7 +162,15 @@ public class Enemy {
 
         facingLeft = dx < 0;  // face left if player is to the left
 
-        if (dist > 1 && !attacking) { // Move toward player only if not in the middle of an attack
+        // Check if enemy is in camera viewport
+        boolean inViewport = (x >= cameraX && x <= cameraX + viewportWidth &&
+                             y >= cameraY && y <= cameraY + viewportHeight);
+
+        // Detection radius (larger than attack radius) - enemy can "detect" player from further away
+        final double DETECTION_RADIUS = 400.0; // pixels - increased for better responsiveness
+        boolean canDetectPlayer = dist <= DETECTION_RADIUS;
+
+        if ((canDetectPlayer || inViewport) && dist > 1 && !attacking) { // Move toward player if detected or in viewport
             double moveX = (dx / dist) * speed;
             double moveY = (dy / dist) * speed;
 
@@ -174,12 +184,12 @@ public class Enemy {
                 frameTimer = 0;
             }
             sprite = walkFrames[currentFrame];
-        } else { 
+        } else if (dist <= 1) { // Only attack when physically close to player
             // Close enough to attack or already attacking
             if (!attacking && attackCooldown <= 0) {
                 attacking = true;
                 attackFrame = 0;
-                attackCooldown = 90; 
+                attackCooldown = 90;
                 System.out.println("Enemy Attacking!");
                 // Randomize enemy attack damage with a minimum of 5
                 Random rand = new Random();

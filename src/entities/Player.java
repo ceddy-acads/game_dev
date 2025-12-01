@@ -78,7 +78,7 @@ public class Player {
     private int deathDirection = DOWN;
     private int frameIndex = 0;        // Default for walking
     private float accumulatedAnimationTime = 0f;  // For time-based animation
-    private final float playerFrameDuration = 0.1f;  // Time per frame
+    private final float playerFrameDuration = 0.15f;  // Time per frame
     private boolean deathAnimationFinished = false; // Flag to indicate if death animation is done
     private static final int HURT_FRAMES = 5;
 
@@ -160,7 +160,7 @@ public class Player {
         this.keyH = keyH;
         this.px = startX;
         this.py = startY;
-        this.speed = 4.0;
+        this.speed = 3.0;
         this.hp = maxHp; // Start with full HP
         this.alive = true;
         this.state = IDLE;
@@ -465,18 +465,22 @@ public class Player {
             keyH.interactJ = false; // Reset after use
         }
 
-        // Movement input aggregated
+        // Movement input aggregated - frame rate independent
         double dx = 0.0, dy = 0.0;
-        if (keyH.upPressed) dy -= speed;
-        if (keyH.downPressed) dy += speed;
-        if (keyH.leftPressed) dx -= speed;
-        if (keyH.rightPressed) dx += speed;
+        if (keyH.upPressed) dy -= 1.0;
+        if (keyH.downPressed) dy += 1.0;
+        if (keyH.leftPressed) dx -= 1.0;
+        if (keyH.rightPressed) dx += 1.0;
 
         // Normalize diagonal
         if (dx != 0 && dy != 0) {
             dx *= 0.7071067811865476; // 1/sqrt(2)
             dy *= 0.7071067811865476;
         }
+
+        // Apply speed and deltaTime for smooth, frame-rate independent movement
+        dx *= speed * deltaTime * 60.0f; // Convert back to pixels per frame equivalent
+        dy *= speed * deltaTime * 60.0f;
 
         // Apply movement with tile and NPC collision detection using smaller collision box
         Rectangle playerBounds = new Rectangle(

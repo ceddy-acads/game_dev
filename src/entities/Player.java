@@ -34,7 +34,8 @@ public class Player {
     //Mana system
     private int maxMana = 100;
     private int mana = 100;
-    private float manaRegenRate = 0.5f; // Mana per frame (30 mana per second at 60 FPS)
+    private float manaRegenRate = 0.1f; // Mana per frame (57 mana per second at 60 FPS)
+    private float manaFraction = 0.0f; // Accumulate fractional mana
 
     // Player stats
     private int baseAttack = 100;
@@ -395,10 +396,29 @@ public class Player {
         if (nCooldown > 0) nCooldown--;
         if (mCooldown > 0) mCooldown--;
 
-        // Mana regeneration
+        // Mana regeneration - properly handles fractional accumulation
         if (mana < maxMana) {
-            mana += manaRegenRate;
-            if (mana > maxMana) mana = maxMana;
+            // Double regeneration rate when mana bar is empty (mana <= 0)
+            float currentRegenRate = (mana <= 0) ? manaRegenRate * 2.0f : manaRegenRate;
+
+            // Accumulate fractional mana
+            manaFraction += currentRegenRate;
+
+            // Add whole mana points when fraction reaches 1.0
+            int manaToAdd = (int) manaFraction;
+            if (manaToAdd > 0) {
+                mana += manaToAdd;
+                manaFraction -= manaToAdd;
+
+                // Cap at max mana
+                if (mana > maxMana) {
+                    mana = maxMana;
+                    manaFraction = 0.0f; // Reset fraction if capped
+                }
+
+                // Debug: uncomment to see regeneration
+                // System.out.println("Mana regenerated: " + mana + "/" + maxMana + " (fraction: " + manaFraction + ")");
+            }
         }
 
         // --- Q Attack: cooldown-limited, one press = one attack ---
@@ -416,17 +436,17 @@ public class Player {
         }
 
         // --- B Attack: cooldown-limited, mana cost, one press = one attack ---
-        if (keyH.skillB && bCooldown == 0 && mana >= 20) {
+        if (keyH.skillB && bCooldown == 0 && mana >= 15) {
             useSkillB();
-            mana -= 20;
+            mana -= 15;
             bCooldown = B_COOLDOWN_MAX;
             keyH.skillB = false; // Reset to prevent continuous skill use
         }
 
         // --- N Attack: cooldown-limited, mana cost, one press = one attack ---
-        if (keyH.skillN && nCooldown == 0 && mana >= 30) {
+        if (keyH.skillN && nCooldown == 0 && mana >= 20) {
             useSkillN();
-            mana -= 30;
+            mana -= 20;
             nCooldown = N_COOLDOWN_MAX;
             keyH.skillN = false; // Reset to prevent continuous skill use
         }

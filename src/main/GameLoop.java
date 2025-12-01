@@ -113,6 +113,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         player.setNPCs(npcs); // Pass NPCs reference to player for collision detection
         player.setDialogueUI(dialogueUI); // Pass DialogueUI reference to player
         dialogueUI.setKeyHandler(keyH); // Pass KeyHandler reference to DialogueUI
+
+        // Load skill icons
+        loadSkillIcons();
     }
 
     public void start() {

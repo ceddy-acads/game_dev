@@ -10,7 +10,7 @@ public class Hotbar {
     private final int screenHeight;
     private final InventoryUI inventory;
     private final int slotSize = 48;
-    private final int numSlots = 5;
+    private final int numSlots = 3;
     private final int hotbarWidth = numSlots * slotSize;
     private final int hotbarHeight = slotSize;
     private final int hotbarX;

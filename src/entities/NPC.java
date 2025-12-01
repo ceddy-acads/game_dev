@@ -152,4 +152,8 @@ public class NPC {
     public int getY() {
         return (int) y;
     }
+
+    public String getName() {
+        return name;
+    }
 }

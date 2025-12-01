@@ -7,6 +7,7 @@ import input.KeyHandler;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.IOException;
@@ -17,9 +18,11 @@ public class Player {
     private int wCooldown = 0;
     private final int W_COOLDOWN_MAX = 60; // 1 sec
     private int bCooldown = 0;
-    private final int B_COOLDOWN_MAX = 300; // 5 sec
+    private final int B_COOLDOWN_MAX = 180; // 3 sec
     private int nCooldown = 0;
-    private final int N_COOLDOWN_MAX = 300; // 5 sec
+    private final int N_COOLDOWN_MAX = 420; // 7 sec
+    private int mCooldown = 0;
+    private final int M_COOLDOWN_MAX = 720; // 12 sec
 
     //HP of the character
     private int maxHp = 100;
@@ -53,6 +56,7 @@ public class Player {
     private static final int HURT = 4; // New state for taking damage
     private static final int FIRESPLASH = 5;
     private static final int ICEPIERCER = 6; // New state for Ice Piercer skill
+    private static final int LIGHTNINGSTORM = 7; // New state for Lightning Storm skill
     private int state = IDLE;  // Start in idle state
 
     // Animation frames [direction][frameIndex]
@@ -63,6 +67,7 @@ public class Player {
     private Image[][] hurtFrames;
     private Image[][] firesplashFrames;
     private Image[][] icepiercerFrames; // New array for Ice Piercer animation frames
+    private Image[][] lightningstormFrames; // New array for Lightning Storm animation frames
     private Image currentImg;  // General image
     private int deathDirection = DOWN;
     private int frameIndex = 0;        // Default for walking
@@ -97,6 +102,8 @@ public class Player {
 
     // Freeze skill area
     private Rectangle freezeArea = null;
+    // Lightning storm skill area
+    private Rectangle lightningArea = null;
 
     public ArrayList<SlashAttack> getSlashes() {
         return slashes;
@@ -167,8 +174,10 @@ public class Player {
         this.wCooldown = 0;
         this.bCooldown = 0;
         this.nCooldown = 0;
+        this.mCooldown = 0;
         this.slashes.clear();
         this.skillWAttacks.clear();
+        this.conversationCount = 0; // Reset conversation progress on death/continue
     }
 
     // Load frames for 4 directions and reuse for diagonals if needed
@@ -290,6 +299,21 @@ public class Player {
             icepiercerFrames[DOWN_LEFT] = icepiercerFrames[LEFT];
             icepiercerFrames[DOWN_RIGHT] = icepiercerFrames[RIGHT];
         }
+
+        lightningstormFrames = new Image[8][6];
+        BufferedImage lightningstormSpriteSheet = loadSpriteSheet("/assets/characters/player_lightningstorm.png");
+        if (lightningstormSpriteSheet != null) {
+            for (int i = 0; i < 6; i++) {
+                lightningstormFrames[DOWN][i] = getSubImage(lightningstormSpriteSheet, i, 0);
+                lightningstormFrames[LEFT][i] = getSubImage(lightningstormSpriteSheet, i, 1);
+                lightningstormFrames[RIGHT][i] = getSubImage(lightningstormSpriteSheet, i, 2);
+                lightningstormFrames[UP][i] = getSubImage(lightningstormSpriteSheet, i, 3);
+            }
+            lightningstormFrames[UP_LEFT] = lightningstormFrames[LEFT];
+            lightningstormFrames[UP_RIGHT] = lightningstormFrames[RIGHT];
+            lightningstormFrames[DOWN_LEFT] = lightningstormFrames[LEFT];
+            lightningstormFrames[DOWN_RIGHT] = lightningstormFrames[RIGHT];
+        }
     }
     
     private BufferedImage loadSpriteSheet(String path) {
@@ -363,6 +387,7 @@ public class Player {
         if (wCooldown > 0) wCooldown--;
         if (bCooldown > 0) bCooldown--;
         if (nCooldown > 0) nCooldown--;
+        if (mCooldown > 0) mCooldown--;
 
         // --- Q Attack: cooldown-limited, one press = one attack ---
         if (keyH.skillSPACE && qCooldown == 0) { // Changed to skillSPACE
@@ -390,6 +415,19 @@ public class Player {
             useSkillN();
             nCooldown = N_COOLDOWN_MAX;
             keyH.skillN = false; // Reset to prevent continuous skill use
+        }
+
+        // --- M Attack: cooldown-limited, one press = one attack ---
+        if (keyH.skillM && mCooldown == 0) {
+            useSkillM();
+            mCooldown = M_COOLDOWN_MAX;
+            keyH.skillM = false; // Reset to prevent continuous skill use
+        }
+
+        // --- Interact with NPCs ---
+        if (keyH.interactJ) {
+            checkNPCInteraction();
+            keyH.interactJ = false; // Reset after use
         }
 
         // Movement input aggregated
@@ -426,6 +464,7 @@ public class Player {
                 canMoveX = false;
             }
         }
+
         // Check NPC collision for horizontal movement
         if (npcs != null) {
             for (NPC npc : npcs) {
@@ -435,6 +474,7 @@ public class Player {
                 }
             }
         }
+
         if (canMoveX) {
             px = proposedX;
             playerBounds = proposedXBounds;
@@ -455,6 +495,7 @@ public class Player {
                 canMoveY = false;
             }
         }
+
         // Check NPC collision for vertical movement
         if (npcs != null) {
             for (NPC npc : npcs) {
@@ -464,13 +505,14 @@ public class Player {
                 }
             }
         }
+
         if (canMoveY) {
             py = proposedY;
         }
         
         boolean isAttacking = !slashes.isEmpty() || !skillWAttacks.isEmpty();
         // Only update state if not in a non-interruptible state
-        if (state != FIRESPLASH && state != HURT && state != DYING && state != ICEPIERCER) {
+        if (state != FIRESPLASH && state != HURT && state != DYING && state != ICEPIERCER && state != LIGHTNINGSTORM) {
             boolean isMoving = (dx != 0 || dy != 0);
 
             if (isAttacking) {
@@ -538,6 +580,20 @@ public class Player {
                     currentImg = firesplashFrames[currentDirection][frameIndex];
                 }
                 break;
+            case LIGHTNINGSTORM:
+                accumulatedAnimationTime += deltaTime;
+                if (accumulatedAnimationTime >= playerFrameDuration) {
+                    frameIndex++;
+                    accumulatedAnimationTime -= playerFrameDuration;
+                    if (frameIndex >= 6) { // Lightning Storm has 6 frames
+                        frameIndex = 0;
+                        state = IDLE;
+                    }
+                }
+                if (frameIndex < 6) {
+                    currentImg = lightningstormFrames[currentDirection][frameIndex];
+                }
+                break;
             case HURT:
                 // Similar logic as DYING and HURT at the top of update()
                 break;
@@ -570,20 +626,7 @@ public class Player {
                 break;
         }
 
-        // Skills B/N/M
-        if (keyH.skillB) {
-            useSkillB();
-            keyH.skillB = false; // Reset to prevent continuous skill use
-        }
-        if (keyH.skillN) {
-            useSkillN();
-            keyH.skillN = false; // Reset to prevent continuous skill use
-        }
-        if (keyH.skillM) {
-            state = ATTACKING;
-            useSkillM();
-            keyH.skillM = false; // Reset to prevent continuous skill use
-        }
+        // All skills are now handled above with proper cooldown checking
     }
 
     public void draw(Graphics g, int screenX, int screenY) {
@@ -701,6 +744,22 @@ public class Player {
         freezeArea = null;
     }
 
+    public Rectangle getLightningArea() {
+        return lightningArea;
+    }
+
+    public void clearLightningArea() {
+        lightningArea = null;
+    }
+
+    // Cooldown getters
+    public int getBCooldown() { return bCooldown; }
+    public int getBCooldownMax() { return B_COOLDOWN_MAX; }
+    public int getNCooldown() { return nCooldown; }
+    public int getNCooldownMax() { return N_COOLDOWN_MAX; }
+    public int getMCooldown() { return mCooldown; }
+    public int getMCooldownMax() { return M_COOLDOWN_MAX; }
+
     public void useSkillB() {
         int drawX = (int) Math.round(px);
         int drawY = (int) Math.round(py);
@@ -732,7 +791,16 @@ public class Player {
         int centerY = (int) Math.round(py);
         freezeArea = new Rectangle(centerX - freezeRadius, centerY - freezeRadius, freezeRadius * 2, freezeRadius * 2);
     }
-    public void useSkillM() { System.out.println("Skill M used"); }
+    public void useSkillM() {
+        state = LIGHTNINGSTORM;
+        frameIndex = 0;
+        accumulatedAnimationTime = 0f;
+        // Set lightning area around player
+        int lightningRadius = 120; // pixels, slightly larger than freeze
+        int centerX = (int) Math.round(px);
+        int centerY = (int) Math.round(py);
+        lightningArea = new Rectangle(centerX - lightningRadius, centerY - lightningRadius, lightningRadius * 2, lightningRadius * 2);
+    }
 
     // Method to set TileManager reference for collision detection
     public void setTileManager(Object tileManager) {
@@ -742,5 +810,99 @@ public class Player {
     // Method to set NPCs reference for collision detection
     public void setNPCs(java.util.List<NPC> npcs) {
         this.npcs = npcs;
+    }
+
+    // Method to set DialogueUI reference
+    public void setDialogueUI(Object dialogueUI) {
+        this.dialogueUI = dialogueUI;
+    }
+
+    private Object dialogueUI;
+
+    // Dialogue system
+    public String dialogueText = null;
+    private int dialogueTimer = 0;
+    private final int DIALOGUE_DURATION = 300; // 5 seconds at 60 FPS
+    private int conversationCount = 0; // Track how many times player has talked to NPCs
+
+    private void checkNPCInteraction() {
+        if (npcs != null) {
+            for (NPC npc : npcs) {
+                double distance = Math.sqrt(Math.pow(px - npc.getX(), 2) + Math.pow(py - npc.getY(), 2));
+                if (distance < 60) { // Within 60 pixels
+                    // Check if player is facing the NPC
+                    if (isFacingNPC(npc)) {
+                        startDialogue(npc);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isFacingNPC(NPC npc) {
+        double dx = npc.getX() - px;
+        double dy = npc.getY() - py;
+
+        // Determine the direction from player to NPC
+        int npcDirection;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Horizontal direction is dominant
+            npcDirection = (dx > 0) ? RIGHT : LEFT;
+        } else {
+            // Vertical direction is dominant
+            npcDirection = (dy > 0) ? DOWN : UP;
+        }
+
+        // Check if player's current direction matches the direction to NPC
+        // Allow some tolerance for diagonal cases
+        return currentDirection == npcDirection ||
+               (currentDirection == UP_LEFT && (npcDirection == UP || npcDirection == LEFT)) ||
+               (currentDirection == UP_RIGHT && (npcDirection == UP || npcDirection == RIGHT)) ||
+               (currentDirection == DOWN_LEFT && (npcDirection == DOWN || npcDirection == LEFT)) ||
+               (currentDirection == DOWN_RIGHT && (npcDirection == DOWN || npcDirection == RIGHT));
+    }
+
+    private void startDialogue(NPC npc) {
+        conversationCount++;
+        List<String> dialogueLines = new ArrayList<>();
+
+        if ("Yorme".equals(npc.getName())) {
+            if (conversationCount == 1) {
+                // First conversation
+                dialogueLines.add("Old Man: Welcome, young adventurer! The world is full of dangers.");
+                dialogueLines.add("Old Man: You look like you could use some guidance...");
+                dialogueLines.add("Old Man: Remember, not everything is as it seems in these lands.");
+                dialogueLines.add("Old Man: Stay vigilant and trust your instincts!");
+            } else if (conversationCount == 2) {
+                // Second conversation - different dialogue
+                dialogueLines.add("Old Man: Back again, are you? That's good.");
+                dialogueLines.add("Old Man: The path ahead grows more treacherous.");
+                dialogueLines.add("Old Man: Have you discovered the ancient ruins yet?");
+                dialogueLines.add("Old Man: Be careful not to awaken what sleeps there.");
+            } else {
+                // Subsequent conversations - more dialogue
+                dialogueLines.add("Old Man: Ah, you've returned once more.");
+                dialogueLines.add("Old Man: The shadows grow longer with each passing day.");
+                dialogueLines.add("Old Man: Remember what I told you before...");
+                dialogueLines.add("Old Man: Trust no one, question everything.");
+            }
+        } else {
+            dialogueLines.add(npc.getName() + ": Hello there!");
+            dialogueLines.add(npc.getName() + ": What brings you to these parts?");
+        }
+
+        if (dialogueUI != null) {
+            ((DialogueUI) dialogueUI).startDialogue(npc.getName(), dialogueLines);
+        }
+    }
+
+    public void updateDialogue() {
+        if (dialogueTimer > 0) {
+            dialogueTimer--;
+            if (dialogueTimer == 0) {
+                dialogueText = null;
+            }
+        }
     }
 }

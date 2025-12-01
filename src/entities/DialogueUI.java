@@ -177,4 +177,11 @@ public class DialogueUI extends JPanel {
         lines.add(text);
         startDialogue("", lines);
     }
+
+    // Update size for responsive layout
+    public void updateSize(int newWidth, int newHeight) {
+        setPreferredSize(new Dimension(newWidth, newHeight));
+        revalidate();
+        repaint();
+    }
 }

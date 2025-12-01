@@ -111,6 +111,12 @@ public class InventoryUI extends JPanel { // Changed from JFrame
         equipmentSlots.put("Weapon", new Slot());
         equipmentSlots.put("Ring", new Slot());
 
+        // Put skill items in the first 3 slots for the hotbar
+        addItemToInventory(cloneItem("skill_fire"));
+        addItemToInventory(cloneItem("skill_ice"));
+        addItemToInventory(cloneItem("skill_lightning"));
+
+        // Add other items after skills
         addItemToInventory(cloneItem("flamebrand"));
         addItemToInventory(cloneItem("sword"));
         addItemToInventory(cloneItem("potion_red"), 3);
@@ -438,6 +444,11 @@ public class InventoryUI extends JPanel { // Changed from JFrame
     }
 
     private void loadSampleItems() {
+        // Skill items for hotbar
+        Item fireSkill = new Item("skill_fire", "Fire Splash", ItemType.CONSUMABLE, "Launches a fireball that deals area damage", "/assets/ui/skill_firesplash.png");
+        Item iceSkill = new Item("skill_ice", "Ice Piercer", ItemType.CONSUMABLE, "Freezes enemies in an area around the player", "/assets/ui/skill_icepiercer.png");
+        Item lightningSkill = new Item("skill_lightning", "Lightning Storm", ItemType.CONSUMABLE, "Calls down lightning that damages all enemies in an area", "/assets/ui/skill_lightningstorm.png");
+
         Item sword = new Item("sword", "Short Sword", ItemType.EQUIPMENT, "A basic sword", "/icons/sword.png");
         sword.stats.put("Damage", "6–10");
 
@@ -452,7 +463,7 @@ public class InventoryUI extends JPanel { // Changed from JFrame
 
         Item ring = new Item("ring_green", "Emerald Ring", ItemType.EQUIPMENT, "A shiny ring", "/icons/ring.png");
 
-        allItems.addAll(Arrays.asList(sword, flame, potion, manaPotion, ring));
+        allItems.addAll(Arrays.asList(fireSkill, iceSkill, lightningSkill, sword, flame, potion, manaPotion, ring));
     }
 
     private Item cloneItem(String id) {
@@ -480,5 +491,12 @@ public class InventoryUI extends JPanel { // Changed from JFrame
     // Public getter for inventorySlots, required by Hotbar
     public java.util.List<Slot> getInventorySlots() {
         return inventorySlots;
+    }
+
+    // Update size for responsive layout
+    public void updateSize(int newWidth, int newHeight) {
+        setPreferredSize(new Dimension(newWidth, newHeight));
+        revalidate();
+        repaint();
     }
 }

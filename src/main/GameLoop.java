@@ -18,10 +18,10 @@ import entities.DialogueUI;
 
 import tile.TileManager;
 
-public class GameLoop extends JLayeredPane implements Runnable { 
-	
-    final int WIDTH = 800;
-    final int HEIGHT = 600;
+public class GameLoop extends JLayeredPane implements Runnable {
+
+    private int WIDTH = 800;
+    private int HEIGHT = 600;
     final int TILE_SIZE = 48; // Consistent tile size
 
     private boolean inventoryOpen = false; // To track inventory state
@@ -97,6 +97,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Initialize hotbar
         hotbar = new Hotbar(WIDTH, HEIGHT, gameInventory);
+        hotbar.setPlayer(player); // Set player reference for cooldown access
         gameInventory.setBounds(0, 0, WIDTH, HEIGHT);
         gameInventory.setVisible(false);
         this.add(gameInventory, JLayeredPane.PALETTE_LAYER);
@@ -143,6 +144,30 @@ public class GameLoop extends JLayeredPane implements Runnable {
         if (gameThread != null) {
             gameThread = null; // Signal thread to stop
         }
+    }
+
+    // Update window size for responsive layout
+    public void updateWindowSize(int newWidth, int newHeight) {
+        this.WIDTH = newWidth;
+        this.HEIGHT = newHeight;
+
+        // Update preferred size
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+
+        // Update UI components that depend on window size
+        if (gameInventory != null) {
+            gameInventory.updateSize(WIDTH, HEIGHT);
+        }
+        if (hotbar != null) {
+            hotbar.updateSize(WIDTH, HEIGHT);
+        }
+        if (dialogueUI != null) {
+            dialogueUI.updateSize(WIDTH, HEIGHT);
+        }
+
+        // Force revalidation and repaint
+        this.revalidate();
+        this.repaint();
     }
 
     private void setupKeyBindings() {
@@ -301,15 +326,21 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // If inventory is a JInternalFrame, it will manage its own painting over the background.
         // For a simple JPanel, we draw the game world first.
 
-        // Calculate camera position to center on the player
-        int cameraX = (int) player.px - WIDTH / 2; // Use player.px
-        int cameraY = (int) player.py - HEIGHT / 2; // Use player.py
+
+        // More aggressive zoom for large windossssssws
+        float zoomFactor = (WIDTH > 1400 || HEIGHT > 900) ? 0.7f : 1.2f;
+        int viewportWidth = (int) (WIDTH * zoomFactor);
+        int viewportHeight = (int) (HEIGHT * zoomFactor);
+
+        // Calculate camera position to center on the player with zoom
+        int cameraX = (int) player.px - viewportWidth / 2;
+        int cameraY = (int) player.py - viewportHeight / 2;
 
         // Clamp camera to map bounds to prevent white background
         int mapPixelWidth = tileM.getMapWidth() * TILE_SIZE;
         int mapPixelHeight = tileM.getMapHeight() * TILE_SIZE;
-        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - WIDTH));
-        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - HEIGHT));
+        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - viewportWidth));
+        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - viewportHeight));
 
         // Draw tiles using TileManager with camera offset
         tileM.draw(g2d, cameraX, cameraY, WIDTH, HEIGHT);
@@ -350,9 +381,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
             s.draw(g, skillWScreenX, skillWScreenY);
         }
 
-        // Draw hotbar
+        // Draw hotbar (now shows skill items from inventory)
         hotbar.draw(g2d);
-        drawHotbarKeys(g2d);
 
         // Do not dispose g2d here as JLayeredPane might manage its own children's painting.
         // The dispose will be called automatically by the Swing system.

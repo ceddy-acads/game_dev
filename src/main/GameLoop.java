@@ -161,6 +161,28 @@ public class GameLoop extends JLayeredPane implements Runnable {
             enemy.update(player.getX(), player.getY(), player);
         }
 
+        // Check for slash attack collisions with enemies
+        for (SlashAttack slash : player.getSlashes()) {
+            for (Enemy enemy : enemies) {
+                if (enemy.isAlive() && slash.getBounds().intersects(enemy.getBounds()) && !slash.hasHit(enemy)) {
+                    enemy.takeDamage(slash.getDamage());
+                    slash.addHitEnemy(enemy);
+                    System.out.println("Slash dealt " + slash.getDamage() + " damage to enemy!");
+                }
+            }
+        }
+
+        // Check for SkillW attack collisions with enemies
+        for (SkillWAttack skillW : player.getSkillWAttacks()) {
+            for (Enemy enemy : enemies) {
+                if (enemy.isAlive() && skillW.getBounds().intersects(enemy.getBounds()) && !skillW.hasHit(enemy)) {
+                    enemy.takeDamage(skillW.getDamage());
+                    skillW.addHitEnemy(enemy);
+                    System.out.println("SkillW dealt " + skillW.getDamage() + " damage to enemy!");
+                }
+            }
+        }
+
         // Handle freeze skill
         Rectangle freezeArea = player.getFreezeArea();
         if (freezeArea != null) {

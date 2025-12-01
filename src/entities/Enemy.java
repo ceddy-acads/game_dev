@@ -53,8 +53,8 @@ public class Enemy {
 
     // Collision detection
     private Object tileManager; // Reference to TileManager for collision
-    private final int collisionWidth = 48;  // Smaller collision box for better movement
-    private final int collisionHeight = 48;
+    private final int collisionWidth = 64;  // Larger collision box to properly detect trees
+    private final int collisionHeight = 64;
 
     private void loadSprites() {
         try {
@@ -226,22 +226,12 @@ public class Enemy {
         if (!alive) return;
 
         int drawX = screenX;
-        double dist = Math.sqrt(Math.pow(x - player.getX(), 2) + Math.pow(y - player.getY(), 2));
-
-        // Apply an offset during attack or idle to make the enemy appear closer to the player.
-        if (attacking || (!attacking && dist <= 100)) { // Apply offset if attacking or idle and close
-            int attackOffset = 40; // Adjust this value as needed
-            if (facingLeft) {
-                drawX -= attackOffset;
-            } else {
-                drawX += attackOffset;
-            }
-        }
+        int drawY = screenY;
         
         if (facingLeft) {
-            g.drawImage(sprite, drawX + width, screenY, -width, height, null);  // flip horizontally
+            g.drawImage(sprite, drawX + width, drawY, -width, height, null);  // flip horizontally
         } else {
-            g.drawImage(sprite, drawX, screenY, width, height, null);
+            g.drawImage(sprite, drawX, drawY, width, height, null);
         }
 
         // HP bar (using 400 as max HP) - drawn at original position

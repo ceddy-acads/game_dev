@@ -78,8 +78,16 @@ public class GameLoop extends JLayeredPane implements Runnable {
         player = new Player(336, 336, keyH); // Position (336,336) = center of open grass area away from obstacles
         player.setTileManager(tileM); // Pass TileManager reference for collision
 
-        // Initialize inventory
-        gameInventory = new InventoryUI(WIDTH, HEIGHT);
+        // Initialize inventory with callback for item usage
+        gameInventory = new InventoryUI(WIDTH, HEIGHT, itemId -> {
+            if ("potion_blue".equals(itemId)) {
+                // Mana potion: restore 50 mana
+                int oldMana = player.getMana();
+                player.restoreMana(50);
+                System.out.println("Used Mana Potion: Mana " + oldMana + " -> " + player.getMana());
+            }
+            // Add other consumable effects here as needed
+        });
 
         // Initialize dialogue UI
         dialogueUI = new DialogueUI(WIDTH, HEIGHT);

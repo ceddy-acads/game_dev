@@ -32,10 +32,11 @@ public class Main {
         mainPanel.add(gameOverScreen, "GAME_OVER");
 
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        window.setResizable(false);
+        window.setResizable(true);
         window.add(mainPanel);
         window.pack();
         window.setLocationRelativeTo(null);
+
         window.setVisible(true);
 
         cardLayout.show(mainPanel, "LANDING");

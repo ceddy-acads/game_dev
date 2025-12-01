@@ -6,20 +6,30 @@ import java.util.List;
 
 public class Hotbar {
 
-    private final int screenWidth;
-    private final int screenHeight;
+    private int screenWidth;
+    private int screenHeight;
     private final InventoryUI inventory;
     private final int slotSize = 48;
     private final int numSlots = 3;
     private final int hotbarWidth = numSlots * slotSize;
     private final int hotbarHeight = slotSize;
-    private final int hotbarX;
-    private final int hotbarY;
+    private int hotbarX;
+    private int hotbarY;
 
     public Hotbar(int screenWidth, int screenHeight, InventoryUI inventory) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
         this.inventory = inventory;
+        recalculate();
+    }
+
+    public void setSize(int w, int h) {
+        this.screenWidth = w;
+        this.screenHeight = h;
+        recalculate();
+    }
+
+    private void recalculate() {
         this.hotbarX = (screenWidth - hotbarWidth) / 2;
         this.hotbarY = screenHeight - hotbarHeight - 10;
     }

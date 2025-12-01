@@ -101,10 +101,15 @@ public class GameLoop extends JLayeredPane implements Runnable {
         gameInventory.setVisible(false);
         this.add(gameInventory, JLayeredPane.PALETTE_LAYER);
 
-        // Initialize enemies
+        // Initialize enemies below the wall in lower map area
         enemies = new ArrayList<>();
-        enemies.add(new Enemy(500, 500));
-        enemies.add(new Enemy(600, 600));
+        enemies.add(new Enemy(600, 800)); // Lower map position 1 - below wall
+        enemies.add(new Enemy(700, 850)); // Lower map position 2 - below wall
+
+        // Set tile manager for enemies for collision detection
+        for (Enemy enemy : enemies) {
+            enemy.setTileManager(tileM);
+        }
 
         // Initialize NPCs
         npcs = new ArrayList<>();
@@ -203,13 +208,22 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         float deltaTime = 1.0f / 60.0f;
 
+        // Calculate camera position for enemy AI
+        int cameraX = (int) player.px - WIDTH / 2;
+        int cameraY = (int) player.py - HEIGHT / 2;
+        // Clamp camera to map bounds
+        int mapPixelWidth = tileM.getMapWidth() * TILE_SIZE;
+        int mapPixelHeight = tileM.getMapHeight() * TILE_SIZE;
+        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - WIDTH));
+        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - HEIGHT));
+
         // Update player
         player.update(deltaTime);
         player.updateDialogue();
 
-        // Update enemies
+        // Update enemies - pass camera viewport info for AI
         for (Enemy enemy : enemies) {
-            enemy.update(player.getX(), player.getY(), player);
+            enemy.update(player.getX(), player.getY(), player, cameraX, cameraY, WIDTH, HEIGHT);
         }
 
         // Update NPCs

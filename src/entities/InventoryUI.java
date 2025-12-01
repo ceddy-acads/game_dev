@@ -14,6 +14,13 @@ public class InventoryUI extends JPanel { // Changed from JFrame
 
     enum ItemType { EQUIPMENT, CONSUMABLE, MATERIAL }
 
+    // Callback interface for item usage effects
+    public interface ItemUsageCallback {
+        void onItemUsed(String itemId);
+    }
+
+    private ItemUsageCallback usageCallback;
+
     static class Item {
         String id;
         String name;
@@ -77,6 +84,11 @@ public class InventoryUI extends JPanel { // Changed from JFrame
 
     // Modified constructor to match GameLoop's expectation
     public InventoryUI(int screenWidth, int screenHeight) {
+        this(screenWidth, screenHeight, null);
+    }
+
+    public InventoryUI(int screenWidth, int screenHeight, ItemUsageCallback callback) {
+        this.usageCallback = callback;
         // Removed JFrame specific calls
         setPreferredSize(new Dimension(screenWidth, screenHeight)); // Set preferred size
         setBackground(PARCHMENT); // Set background for the JPanel
@@ -102,6 +114,7 @@ public class InventoryUI extends JPanel { // Changed from JFrame
         addItemToInventory(cloneItem("flamebrand"));
         addItemToInventory(cloneItem("sword"));
         addItemToInventory(cloneItem("potion_red"), 3);
+        addItemToInventory(cloneItem("potion_blue"), 2);
         addItemToInventory(cloneItem("ring_green"));
 
         // JPanel root = new JPanel(new BorderLayout()); // No longer need a root panel, this JPanel is the root
@@ -402,6 +415,11 @@ public class InventoryUI extends JPanel { // Changed from JFrame
         if (selectedSlot == null || selectedSlot.item == null) return;
         if (selectedSlot.item.type != ItemType.CONSUMABLE) return;
 
+        // Notify callback before consuming the item
+        if (usageCallback != null) {
+            usageCallback.onItemUsed(selectedSlot.item.id);
+        }
+
         selectedSlot.amount--;
         if (selectedSlot.amount <= 0) selectedSlot.item = null;
 
@@ -429,9 +447,12 @@ public class InventoryUI extends JPanel { // Changed from JFrame
         Item potion = new Item("potion_red", "Health Potion", ItemType.CONSUMABLE, "Restores health", "/icons/potion_red.png");
         potion.stack = 10;
 
+        Item manaPotion = new Item("potion_blue", "Mana Potion", ItemType.CONSUMABLE, "Restores mana", "/icons/potion_blue.png");
+        manaPotion.stack = 10;
+
         Item ring = new Item("ring_green", "Emerald Ring", ItemType.EQUIPMENT, "A shiny ring", "/icons/ring.png");
 
-        allItems.addAll(Arrays.asList(sword, flame, potion, ring));
+        allItems.addAll(Arrays.asList(sword, flame, potion, manaPotion, ring));
     }
 
     private Item cloneItem(String id) {

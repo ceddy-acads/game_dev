@@ -30,6 +30,11 @@ public class Player {
     private boolean takingDamage = false;
     private int flashTimer = 0;
 
+    //Mana system
+    private int maxMana = 100;
+    private int mana = 100;
+    private float manaRegenRate = 0.5f; // Mana per frame (30 mana per second at 60 FPS)
+
     // Player stats
     private int baseAttack = 100;
 
@@ -165,6 +170,7 @@ public class Player {
         this.px = initialX;
         this.py = initialY;
         this.hp = maxHp;
+        this.mana = maxMana;
         this.alive = true;
         this.state = IDLE;
         this.deathAnimationFinished = false;
@@ -386,6 +392,12 @@ public class Player {
         if (nCooldown > 0) nCooldown--;
         if (mCooldown > 0) mCooldown--;
 
+        // Mana regeneration
+        if (mana < maxMana) {
+            mana += manaRegenRate;
+            if (mana > maxMana) mana = maxMana;
+        }
+
         // --- Q Attack: cooldown-limited, one press = one attack ---
         if (keyH.skillSPACE && qCooldown == 0) { // Changed to skillSPACE
             useSkillQ();
@@ -400,23 +412,26 @@ public class Player {
             keyH.skillW = false; // Reset the skill key after use
         }
 
-        // --- B Attack: cooldown-limited, one press = one attack ---
-        if (keyH.skillB && bCooldown == 0) {
+        // --- B Attack: cooldown-limited, mana cost, one press = one attack ---
+        if (keyH.skillB && bCooldown == 0 && mana >= 20) {
             useSkillB();
+            mana -= 20;
             bCooldown = B_COOLDOWN_MAX;
             keyH.skillB = false; // Reset to prevent continuous skill use
         }
 
-        // --- N Attack: cooldown-limited, one press = one attack ---
-        if (keyH.skillN && nCooldown == 0) {
+        // --- N Attack: cooldown-limited, mana cost, one press = one attack ---
+        if (keyH.skillN && nCooldown == 0 && mana >= 30) {
             useSkillN();
+            mana -= 30;
             nCooldown = N_COOLDOWN_MAX;
             keyH.skillN = false; // Reset to prevent continuous skill use
         }
 
-        // --- M Attack: cooldown-limited, one press = one attack ---
-        if (keyH.skillM && mCooldown == 0) {
+        // --- M Attack: cooldown-limited, mana cost, one press = one attack ---
+        if (keyH.skillM && mCooldown == 0 && mana >= 50) {
             useSkillM();
+            mana -= 50;
             mCooldown = M_COOLDOWN_MAX;
             keyH.skillM = false; // Reset to prevent continuous skill use
         }
@@ -623,6 +638,12 @@ public class Player {
         g.setColor(Color.GREEN);
         g.fillRect(drawX, drawY - 10, (int) (width * ((double) hp / maxHp)), 5);
 
+        // Draw Mana bar below HP bar
+        g.setColor(Color.GRAY);
+        g.fillRect(drawX, drawY - 5, width, 5);
+        g.setColor(Color.BLUE);
+        g.fillRect(drawX, drawY - 5, (int) (width * ((double) mana / maxMana)), 5);
+
         // Skill animations are drawn by GameLoop, not Player itself.
     }
 
@@ -706,6 +727,16 @@ public class Player {
     public int getNCooldownMax() { return N_COOLDOWN_MAX; }
     public int getMCooldown() { return mCooldown; }
     public int getMCooldownMax() { return M_COOLDOWN_MAX; }
+
+    // Mana getters
+    public int getMana() { return mana; }
+    public int getMaxMana() { return maxMana; }
+
+    // Mana restoration method
+    public void restoreMana(int amount) {
+        mana += amount;
+        if (mana > maxMana) mana = maxMana;
+    }
 
     public void useSkillB() {
         int drawX = (int) Math.round(px);

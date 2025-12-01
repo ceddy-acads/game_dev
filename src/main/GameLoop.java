@@ -72,6 +72,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
         enemies.add(new Enemy(500, 500));
         enemies.add(new Enemy(600, 600));
 
+        // Set tile manager for enemies (for collision detection)
+        for (Enemy enemy : enemies) {
+            enemy.setTileManager(tileM);
+        }
+
         // Load skill icons
         loadSkillIcons();
     }

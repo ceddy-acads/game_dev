@@ -51,6 +51,11 @@ public class Enemy {
     // Freeze effect
     private int freezeTimer = 0; // in frames, 0 = not frozen
 
+    // Collision detection
+    private Object tileManager; // Reference to TileManager for collision
+    private final int collisionWidth = 48;  // Smaller collision box for better movement
+    private final int collisionHeight = 48;
+
     private void loadSprites() {
         try {
             // FOR IDLE - Using Idle.png spritesheet (640x128, 5 frames in a single row)
@@ -121,9 +126,8 @@ public class Enemy {
                 double moveX = (dx / dist) * speed * RETREAT_SPEED_MULTIPLIER;
                 double moveY = (dy / dist) * speed * RETREAT_SPEED_MULTIPLIER;
 
-                // Move freely (no collision)
-                x += moveX;
-                y += moveY;
+                // Apply collision detection
+                applyCollisionMovement(moveX, moveY);
 
                 facingLeft = dx < 0; // Face the direction of retreat
 
@@ -141,9 +145,8 @@ public class Enemy {
                 double moveX = speed * RETREAT_SPEED_MULTIPLIER * Math.cos(angle);
                 double moveY = speed * RETREAT_SPEED_MULTIPLIER * Math.sin(angle);
 
-                // Move freely (no collision)
-                x += moveX;
-                y += moveY;
+                // Apply collision detection
+                applyCollisionMovement(moveX, moveY);
             }
             return; // Stop further updates if retreating
         } else {
@@ -161,9 +164,8 @@ public class Enemy {
             double moveX = (dx / dist) * speed;
             double moveY = (dy / dist) * speed;
 
-            // Move freely (no collision)
-            x += moveX;
-            y += moveY;
+            // Apply collision detection
+            applyCollisionMovement(moveX, moveY);
 
             // Animate walking
             frameTimer++;
@@ -282,5 +284,35 @@ public class Enemy {
 
     public int getY() {
         return (int) y;
+    }
+
+    // Set TileManager reference for collision detection
+    public void setTileManager(Object tileManager) {
+        this.tileManager = tileManager;
+    }
+
+    // Apply collision-aware movement similar to player
+    private void applyCollisionMovement(double moveX, double moveY) {
+        if (tileManager != null) {
+            // Try horizontal movement first
+            double proposedX = x + moveX;
+            int topLeftX = (int) Math.round(proposedX - collisionWidth / 2.0);
+            int topLeftY = (int) Math.round(y - collisionHeight / 2.0);
+            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+                x = proposedX;
+            }
+
+            // Try vertical movement
+            double proposedY = y + moveY;
+            topLeftX = (int) Math.round(x - collisionWidth / 2.0);
+            topLeftY = (int) Math.round(proposedY - collisionHeight / 2.0);
+            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+                y = proposedY;
+            }
+        } else {
+            // No collision detection available, move freely
+            x += moveX;
+            y += moveY;
+        }
     }
 }

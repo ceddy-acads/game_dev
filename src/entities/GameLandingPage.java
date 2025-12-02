@@ -24,7 +24,7 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
 
     private final List<Point> clouds = new ArrayList<>();
     private final Timer timer;
-    private Rectangle playButton = new Rectangle(0, 0, 120, 40);
+    private Rectangle playButton = new Rectangle(0, 0, 180, 60);
     private boolean hoveringPlay = false;
 
     private int swordY = 0;
@@ -47,12 +47,14 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
         addMouseMotionListener(this);
         setFocusable(true);
 
-        // Add key listener for spacebar to trigger play
+        // Add key listener for spacebar to trigger play and F for fullscreen
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_SPACE) {
                     onPlay.run();
+                } else if (e.getKeyCode() == KeyEvent.VK_F) {
+                    main.Main.toggleFullscreen();
                 }
             }
         });
@@ -149,59 +151,54 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
         }
 
 
-        g.setFont(new Font("Serif", Font.BOLD, 56));
+        g.setFont(new Font("Georgia", Font.BOLD, 72));
         g.setColor(new Color(255, 210, 120));
 
         String leftWord = "BLADE";
         String rightWord = "QUEST";
 
-        int totalWidth = g.getFontMetrics().stringWidth(leftWord)
-                + g.getFontMetrics().stringWidth(rightWord)
-                + 100;
+        int leftWidth = g.getFontMetrics().stringWidth(leftWord);
+        int rightWidth = g.getFontMetrics().stringWidth(rightWord);
+        int swordSpacing = 120; // Space for the sword image
+        int totalWidth = leftWidth + rightWidth + swordSpacing;
 
         int baseX = getWidth() / 2 - totalWidth / 2;
-        int baseY = 110;
-
+        int baseY = 130; // Moved down slightly for larger text
 
         g.drawString(leftWord, baseX, baseY);
 
-
         if (sword != null) {
-        	int leftWidth = g.getFontMetrics().stringWidth(leftWord);
-        	int rightWidth = g.getFontMetrics().stringWidth(rightWord);
-        	int totalWidth1 = leftWidth + rightWidth + 160;
-        	int startX = (getWidth() - totalWidth1) / 2;
-
-        	int swordX = startX + leftWidth + 20;
-        	int swordYdraw = baseY - 70 + swordY;
-        	g.drawImage(sword, swordX, swordYdraw, 120, 120, null);
+        	// Center the sword between BLADE and QUEST
+        	int swordCenterX = baseX + leftWidth + (swordSpacing / 2);
+        	int swordX = swordCenterX - 70; // 70 is half of sword width (140/2)
+        	int swordYdraw = baseY - 85 + swordY; // Adjusted for larger font
+        	g.drawImage(sword, swordX, swordYdraw, 140, 140, null); // Slightly larger sword
         }
 
-
-        int rightX = baseX + g.getFontMetrics().stringWidth(leftWord) + 100;
+        int rightX = baseX + leftWidth + swordSpacing;
         g.drawString(rightWord, rightX, baseY);
 
 
-        int bx = getWidth() / 2 - 60;
+        int bx = getWidth() / 2 - 90;
         int by = getHeight() / 2 + 100;
-        playButton.setBounds(bx, by, 200, 40);
+        playButton.setBounds(bx, by, 180, 60);
 
         if (hoveringPlay) {
             g.setColor(new Color(255, 255, 255, 230));
-            g.fillRoundRect(bx - 3, by - 3, 126, 46, 12, 12);
+            g.fillRoundRect(bx - 3, by - 3, 186, 66, 15, 15);
             g.setColor(new Color(255, 120, 0));
         } else {
             g.setColor(Color.orange);
         }
-        g.fillRoundRect(bx, by, 120, 40, 10, 10);
+        g.fillRoundRect(bx, by, 180, 60, 15, 15);
 
 
         g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.setFont(new Font("Georgia", Font.BOLD, 24));
         FontMetrics fm = g.getFontMetrics();
         String text = "PLAY";
-        int tx2 = bx + (120 - fm.stringWidth(text)) / 2;
-        int ty2 = by + ((40 - fm.getHeight()) / 2) + fm.getAscent();
+        int tx2 = bx + (180 - fm.stringWidth(text)) / 2;
+        int ty2 = by + ((60 - fm.getHeight()) / 2) + fm.getAscent();
         g.drawString(text, tx2, ty2);
         if (flashAlpha > 0f) {
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, flashAlpha));

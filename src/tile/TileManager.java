@@ -231,4 +231,11 @@ public class TileManager {
         }
         return -1; // Invalid position
     }
+
+    // Method to set tile ID at specific tile coordinates
+    public void setTile(int tileX, int tileY, int tileId) {
+        if (tileX >= 0 && tileX < mapWidth && tileY >= 0 && tileY < mapHeight) {
+            tileMap[tileY][tileX] = tileId;
+        }
+    }
 }

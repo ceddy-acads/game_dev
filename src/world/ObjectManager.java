@@ -78,17 +78,109 @@ public class ObjectManager {
     }
 
     private void spawnObjects() {
-        int maxObjects = 100; // Maximum number of objects to spawn
-        int minSpacing = 3; // Minimum spacing in tiles between objects
+        // Fixed positions for objects on grass tiles only - very widely spaced and reduced amount
+        // Player spawns at tile (5, 5) - avoiding positions within 3 tiles of spawn
+        // Each position has a fixed object type assigned
+        Object[] fixedSpawns = {
+            // Upper grass area - very sparse
+            new int[]{6, 3, 0}, new int[]{10, 6, 1},
 
-        for (int i = 0; i < maxObjects; i++) {
-            if (!trySpawnObject(minSpacing)) {
-                // If we can't find a spot after several attempts, stop
-                break;
+            // Left side grass area - widely spaced
+            new int[]{5, 18, 7}, new int[]{9, 22, 8},
+
+            // Right side grass area - widely spaced
+            new int[]{26, 18, 2}, new int[]{30, 22, 3},
+
+            // Bottom area grass - very sparse
+            new int[]{6, 26, 10}, new int[]{10, 28, 11},
+
+            // Center area - minimal
+            new int[]{17, 19, 13}, new int[]{21, 21, 14}
+        };
+
+        // Spawn objects at fixed positions with fixed types
+        for (Object spawn : fixedSpawns) {
+            int[] data = (int[]) spawn;
+            int tileX = data[0];
+            int tileY = data[1];
+            int objectIndex = data[2];
+
+            // Verify this is a grass tile (tile 0)
+            int tileId = tileM.getTileId(tileX, tileY);
+            if (tileId != 0) {
+                continue; // Skip if not grass
+            }
+
+            // Check if position is valid (not too close to NPCs or collision tiles)
+            if (!isPositionValidForObject(tileX, tileY)) {
+                continue; // Skip invalid positions
+            }
+
+            // Use the fixed object type
+            if (objectIndex >= 0 && objectIndex < objectImages.length) {
+                // Create object
+                int pixelX = tileX * tileSize;
+                int pixelY = tileY * tileSize;
+
+                String imagePath = objectImages[objectIndex];
+                String name = objectNames[objectIndex];
+                boolean collision = true; // All objects have collision
+
+                WorldObject obj = new WorldObject(pixelX, pixelY, imagePath, name, collision);
+                objects.add(obj);
             }
         }
 
-        System.out.println("Spawned " + objects.size() + " objects on the map");
+        System.out.println("Spawned " + objects.size() + " objects at fixed positions with fixed types on grass tiles");
+    }
+
+    private boolean isPositionValidForObject(int tileX, int tileY) {
+        // Check spacing from NPCs (prevent objects from spawning near NPCs)
+        if (npcs != null) {
+            for (Object npc : npcs) {
+                try {
+                    // Use reflection to get NPC position
+                    int npcX = (Integer) npc.getClass().getMethod("getX").invoke(npc);
+                    int npcY = (Integer) npc.getClass().getMethod("getY").invoke(npc);
+
+                    int npcTileX = npcX / tileSize;
+                    int npcTileY = npcY / tileSize;
+
+                    int dx = Math.abs(tileX - npcTileX);
+                    int dy = Math.abs(tileY - npcTileY);
+
+                    // Use larger spacing for NPCs (5 tiles instead of 3)
+                    if (dx < 5 && dy < 5) {
+                        return false; // Too close to NPC
+                    }
+                } catch (Exception e) {
+                    // If reflection fails, continue
+                }
+            }
+        }
+
+        // Check spacing from collision tiles (walls, water, etc.)
+        // Objects should not spawn adjacent to collision tiles to prevent overlap
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue; // Skip center tile
+
+                int checkX = tileX + dx;
+                int checkY = tileY + dy;
+
+                // Check bounds
+                if (checkX >= 0 && checkX < mapWidth && checkY >= 0 && checkY < mapHeight) {
+                    int tileId = tileM.getTileId(checkX, checkY);
+
+                    // If adjacent tile has collision, don't spawn here
+                    if (tileId == 1 || tileId == 2 || tileId == 5 || tileId == 11) {
+                        return false; // Too close to collision tile
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     private boolean trySpawnObject(int minSpacing) {

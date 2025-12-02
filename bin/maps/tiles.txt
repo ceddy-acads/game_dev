@@ -16,3 +16,5 @@
 13,/assets/tiles/road03.png,0,Road03
 14,/assets/tiles/road06.png,0,Road06
 15,/assets/tiles/road08.png,0,Road08
+16,/assets/tiles/TREE 1 - DAY.png,1,Door3
+17,/assets/tiles/grass00.png,0,Door4

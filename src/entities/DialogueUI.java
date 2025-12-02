@@ -1,68 +1,84 @@
 package entities;
 
 import javax.swing.*;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.awt.GridBagConstraints;
 
 public class DialogueUI extends JPanel {
 
     private List<String> dialogueLines = new ArrayList<>();
     private int currentLineIndex = 0;
-    private JTextArea dialogueTextArea;
+    private JTextPane dialogueTextPane;
     private JButton continueButton;
     private JButton closeButton;
     private boolean isVisible = false;
     private Object keyHandler; // Reference to KeyHandler for clearing movement keys
 
-    // Colors matching the game's theme
-    private final Color PARCHMENT = new Color(217,195,154);
+    // Colors matching the game's theme - updated for black background
+    private final Color BACKGROUND_BLACK = new Color(0, 0, 0);
     private final Color PARCHMENT_DARK = new Color(200,175,130);
-    private final Color TEXT_BROWN = new Color(59,47,35);
+    private final Color TEXT_WHITE = new Color(255, 255, 255);
     private final Color PANEL_BORDER = new Color(91,74,48);
     private final Color BUTTON_BROWN = new Color(152,117,78);
 
     public DialogueUI(int screenWidth, int screenHeight) {
         setPreferredSize(new Dimension(screenWidth, screenHeight));
-        setBackground(new Color(0, 0, 0, 255)); // Fully opaque black background
-        setLayout(new BorderLayout());
+        setOpaque(false); // Make the overlay transparent
+        setLayout(new GridBagLayout());
 
-        // Main dialogue panel - positioned at semi-bottom
+        // Centered dialogue panel
         JPanel dialoguePanel = new JPanel();
         dialoguePanel.setLayout(new BorderLayout());
-        dialoguePanel.setBackground(PARCHMENT);
+        dialoguePanel.setBackground(BACKGROUND_BLACK);
         dialoguePanel.setBorder(BorderFactory.createLineBorder(PANEL_BORDER, 3));
-        dialoguePanel.setPreferredSize(new Dimension(600, 200)); // Fixed size for dialogue panel
+        dialoguePanel.setOpaque(true);
+        // Set preferred size for centered dialog box
+        dialoguePanel.setPreferredSize(new Dimension((int)(screenWidth * 0.8), (int)(screenHeight * 0.8)));
 
-        // Dialogue text area
-        dialogueTextArea = new JTextArea();
-        dialogueTextArea.setEditable(false);
-        dialogueTextArea.setLineWrap(true);
-        dialogueTextArea.setWrapStyleWord(true);
-        dialogueTextArea.setFont(new Font("Arial", Font.PLAIN, 16));
-        dialogueTextArea.setBackground(PARCHMENT);
-        dialogueTextArea.setForeground(TEXT_BROWN);
-        dialogueTextArea.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        // Dialogue text pane for centered dialog box
+        JTextPane dialogueTextPane = new JTextPane();
+        dialogueTextPane.setEditable(false);
+        dialogueTextPane.setFont(new Font("Georgia", Font.PLAIN, 24));
+        dialogueTextPane.setBackground(BACKGROUND_BLACK);
+        dialogueTextPane.setForeground(TEXT_WHITE);
+        dialogueTextPane.setBorder(BorderFactory.createEmptyBorder(80, 40, 80, 40));
+        // Set preferred size for centered dialog
+        dialogueTextPane.setPreferredSize(new Dimension((int)(screenWidth * 0.8 - 80), (int)(screenHeight * 0.8 - 200)));
 
-        JScrollPane scrollPane = new JScrollPane(dialogueTextArea);
+        // Center the text horizontally
+        StyledDocument doc = dialogueTextPane.getStyledDocument();
+        SimpleAttributeSet center = new SimpleAttributeSet();
+        StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), center, false);
+
+        // Wrap in scroll pane
+        JScrollPane scrollPane = new JScrollPane(dialogueTextPane);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setBackground(PARCHMENT);
+        scrollPane.setBackground(BACKGROUND_BLACK);
 
         dialoguePanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        buttonPanel.setBackground(PARCHMENT);
+        // Store reference for later use
+        this.dialogueTextPane = dialogueTextPane;
+
+        // Button panel for centered dialog
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 20)); // More spacing
+        buttonPanel.setBackground(BACKGROUND_BLACK);
 
         continueButton = new JButton("Continue (Space)");
-        styleButton(continueButton, BUTTON_BROWN);
+        styleButtonFullscreen(continueButton, BUTTON_BROWN);
         continueButton.addActionListener(e -> nextLine());
 
         closeButton = new JButton("Close (ESC)");
-        styleButton(closeButton, new Color(168,92,61));
+        styleButtonFullscreen(closeButton, new Color(168,92,61));
         closeButton.addActionListener(e -> closeDialogue());
 
         buttonPanel.add(continueButton);
@@ -70,13 +86,12 @@ public class DialogueUI extends JPanel {
 
         dialoguePanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        // Position the dialogue panel at the semi-bottom
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        bottomPanel.add(dialoguePanel, BorderLayout.SOUTH);
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 50, 0)); // 50px from bottom
-
-        add(bottomPanel, BorderLayout.SOUTH);
+        // Center the dialogue panel
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        add(dialoguePanel, gbc);
 
         // Initially hidden
         setVisible(false);
@@ -87,7 +102,18 @@ public class DialogueUI extends JPanel {
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createLineBorder(PANEL_BORDER, 2));
-        button.setFont(new Font("Arial", Font.BOLD, 12));
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+    }
+
+    private void styleButtonFullscreen(JButton button, Color bg) {
+        button.setBackground(bg);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(PANEL_BORDER, 3)); // Thicker border
+        button.setFont(new Font("Arial", Font.BOLD, 18)); // Larger font for full screen
+        button.setPreferredSize(new Dimension(180, 50)); // Fixed larger size
+        button.setMinimumSize(new Dimension(180, 50));
+        button.setMaximumSize(new Dimension(180, 50));
     }
 
     public void startDialogue(String npcName, List<String> lines) {
@@ -129,7 +155,7 @@ public class DialogueUI extends JPanel {
 
     private void updateText() {
         if (currentLineIndex < dialogueLines.size()) {
-            dialogueTextArea.setText(dialogueLines.get(currentLineIndex));
+            dialogueTextPane.setText(dialogueLines.get(currentLineIndex));
             continueButton.setText(currentLineIndex < dialogueLines.size() - 1 ? "Continue (Space)" : "Finish (Space)");
         } else {
             closeDialogue();
@@ -150,7 +176,7 @@ public class DialogueUI extends JPanel {
         setVisible(false);
         dialogueLines.clear();
         currentLineIndex = 0;
-        dialogueTextArea.setText("");
+        dialogueTextPane.setText("");
     }
 
     public boolean isDialogueVisible() {

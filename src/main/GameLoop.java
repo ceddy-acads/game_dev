@@ -397,11 +397,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
             skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
             skillLightningStormIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_lightningstorm.png")).getImage();
             skillFireSplashIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_firesplash.png")).getImage();
+            swordIcon = new ImageIcon(getClass().getResource("/assets/icons/Icon33.png")).getImage();
         } catch (Exception e) {
-            System.err.println("Failed to load skill icons: " + e.getMessage());
+            System.err.println("Failed to load icons: " + e.getMessage());
             skillIcePiercerIcon = null;
             skillLightningStormIcon = null;
             skillFireSplashIcon = null;
+            swordIcon = null;
         }
     }
 
@@ -421,6 +423,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         for (Enemy enemy : enemies) {
             enemy.setTileManager(tileM);
             enemy.setInventory(gameInventory);
+            enemy.setObjectManager(objectM);
         }
 
         System.out.println("Wave " + currentWave + " started!");
@@ -660,159 +663,6 @@ public class GameLoop extends JLayeredPane implements Runnable {
         g2d.setColor(Color.BLUE);
         int manaWidth = Math.max(barHeight, (int) (barWidth * ((double) player.getMana() / player.getMaxMana())));
         g2d.fillRoundRect(barsX, manaBarY, manaWidth, barHeight, arcWidth, arcHeight);
-    }
-
-    private void loadSkillIcons() {
-        try {
-            skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
-            skillLightningStormIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_lightningstorm.png")).getImage();
-            skillFireSplashIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_firesplash.png")).getImage();
-            swordIcon = new ImageIcon(getClass().getResource("/assets/icons/Icon33.png")).getImage();
-        } catch (Exception e) {
-            System.err.println("Failed to load icons: " + e.getMessage());
-            // Fallback to programmatically drawn icons if images fail to load
-            skillIcePiercerIcon = null;
-            skillLightningStormIcon = null;
-            skillFireSplashIcon = null;
-            swordIcon = null;
-        }
-    }
-
-    // Wave system methods
-    private void startNextWave() {
-        currentWave++;
-        waveActive = true;
-        enemies.clear(); // Clear existing enemies
-
-        if (currentWave <= 5) {
-            // Spawn regular wave enemies
-            spawnWaveEnemies(currentWave);
-        } else if (!miniBossSpawned) {
-            // Spawn mini boss after wave 5
-            spawnMiniBoss();
-            miniBossSpawned = true;
-        }
-
-        // Set tile manager and inventory for new enemies
-        for (Enemy enemy : enemies) {
-            enemy.setTileManager(tileM);
-            enemy.setInventory(gameInventory);
-            enemy.setObjectManager(objectM);
-        }
-
-        System.out.println("Wave " + currentWave + " started!");
-    }
-
-    private void spawnWaveEnemies(int waveNumber) {
-        int enemyCount = 3 + (waveNumber - 1) * 2 + 12; // Add 12 enemies: 15, 17, 19, 21, 23 enemies
-        Enemy.EnemyType[] enemyTypes = getEnemyTypesForWave(waveNumber);
-
-        // Spawn enemies at the bottom edge of the map (Y coordinates around 2300-2350)
-        int[][] spawnPositions = {
-            {200, 2300}, {400, 2320}, {600, 2280}, {800, 2350}, {1000, 2310},
-            {1200, 2290}, {1400, 2330}, {1600, 2270}, {1800, 2340}, {2000, 2300},
-            {2200, 2320}, {240, 2280}, {440, 2350}, {640, 2310}, {840, 2290},
-            {1040, 2330}, {1240, 2270}, {1440, 2340}, {1640, 2300}, {1840, 2320},
-            {2040, 2280}, {2240, 2350}, {2440, 2310}, {2640, 2290}, {2840, 2330}
-        };
-
-        for (int i = 0; i < enemyCount && i < spawnPositions.length; i++) {
-            Enemy.EnemyType type = enemyTypes[i % enemyTypes.length];
-            enemies.add(new Enemy(spawnPositions[i][0], spawnPositions[i][1], type));
-        }
-    }
-
-    private Enemy.EnemyType[] getEnemyTypesForWave(int waveNumber) {
-        switch (waveNumber) {
-            case 1:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC};
-            case 2:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST};
-            case 3:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.TANK};
-            case 4:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
-            case 5:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
-            default:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC};
-        }
-    }
-
-    private void spawnMiniBoss() {
-        enemies.add(new Enemy(700, 800, Enemy.EnemyType.MINI_BOSS));
-        System.out.println("Mini Boss spawned!");
-    }
-
-    private boolean checkWaveCompleted() {
-        // Check if all enemies are dead
-        for (Enemy enemy : enemies) {
-            if (enemy.isAlive()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void triggerWaveDialogue() {
-        List<String> dialogueLines = new ArrayList<>();
-
-        if (currentWave <= 5) {
-            // Dialogue after each regular wave
-            switch (currentWave) {
-                case 1:
-                    dialogueLines.add("Old Man: Well done, young warrior! You've survived the first wave.");
-                    dialogueLines.add("Old Man: But don't get complacent. The creatures grow stronger.");
-                    dialogueLines.add("Old Man: Prepare yourself for what's coming next.");
-                    break;
-                case 2:
-                    dialogueLines.add("Old Man: Impressive! The second wave falls before you.");
-                    dialogueLines.add("Old Man: These beasts are learning from their defeats.");
-                    dialogueLines.add("Old Man: Stay sharp and watch your surroundings.");
-                    break;
-                case 3:
-                    dialogueLines.add("Old Man: You continue to surprise me with your prowess.");
-                    dialogueLines.add("Old Man: The third wave was no match for your skills.");
-                    dialogueLines.add("Old Man: But I sense a greater darkness approaching...");
-                    break;
-                case 4:
-                    dialogueLines.add("Old Man: Four waves down! You're proving to be quite the formidable opponent.");
-                    dialogueLines.add("Old Man: The enemies grow desperate, and with desperation comes danger.");
-                    dialogueLines.add("Old Man: One more wave before the true test begins.");
-                    break;
-                case 5:
-                    dialogueLines.add("Old Man: The fifth wave is vanquished! You've done what few could.");
-                    dialogueLines.add("Old Man: But this was merely a prelude. The real battle awaits.");
-                    dialogueLines.add("Old Man: A fearsome creature approaches. Prepare for the ultimate challenge!");
-                    break;
-            }
-        } else {
-            // Dialogue after mini boss
-            dialogueLines.add("Old Man: Unbelievable! You've defeated the ancient guardian!");
-            dialogueLines.add("Old Man: Such power... such determination. You are truly worthy.");
-            dialogueLines.add("Old Man: The darkness has been pushed back, for now.");
-            dialogueLines.add("Old Man: Rest well, hero. The realm owes you its gratitude.");
-        }
-
-        dialogueUI.startDialogue("Yorme", dialogueLines);
-
-        // Set up dialogue completion callback
-        setupDialogueCallback();
-    }
-
-    private void setupDialogueCallback() {
-        // This method will be called when dialogue ends
-        // For now, we'll check in the update loop if dialogue is finished
-        waitingForDialogue = true;
-    }
-
-    // Method to continue after dialogue (called from update when dialogue ends)
-    private void onDialogueFinished() {
-        waitingForDialogue = false;
-        if (currentWave >= 5 && miniBossSpawned) {
-            // Game completed - could trigger victory screen
-            System.out.println("Congratulations! All waves completed!");
-        }
     }
 
     // Define a functional interface for the game over callback

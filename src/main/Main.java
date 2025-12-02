@@ -20,6 +20,7 @@ public class Main {
     private static ActScreen actScreen;
     private static GameOverScreen gameOverScreen;
     private static Clip backgroundMusic;
+    private static boolean isFullscreen = false;
 
     public static void main(String[] args) {
         window = new JFrame("Blade Quest");
@@ -158,16 +159,24 @@ public class Main {
     }
 
     public static void showStoryScreen() {
-        // Show story screen immediately without fade transition
-        cardLayout.show(mainPanel, "STORY");
-        storyScreen.requestFocusInWindow();
-        stopBackgroundMusic(); // Stop music after the landing page
+        // Add fade out transition before showing story screen
+        new FadeTransition(window, FadeTransition.FadeType.FADE_OUT, () -> {
+            cardLayout.show(mainPanel, "STORY");
+            storyScreen.requestFocusInWindow();
+            stopBackgroundMusic(); // Stop music after the landing page
+            new FadeTransition(window, FadeTransition.FadeType.FADE_IN, null);
+        });
     }
 
     public static void showActScreen() {
         // Create new ActScreen instance for this transition
         actScreen = new ActScreen(Main::startActualGame);
         mainPanel.add(actScreen, "ACT");
+
+        // Fade out music from story screen
+        if (storyScreen != null) {
+            storyScreen.fadeOutMusic();
+        }
 
         // Show Act screen immediately (ActScreen handles its own fade transitions)
         cardLayout.show(mainPanel, "ACT");
@@ -208,5 +217,33 @@ public class Main {
             gameLoop.start(); // Restart the game loop if needed, or ensure it continues
             new FadeTransition(window, FadeTransition.FadeType.FADE_IN, null);
         });
+    }
+
+    // Method to toggle fullscreen mode
+    public static void toggleFullscreen() {
+        GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+
+        if (isFullscreen) {
+            // Exit fullscreen
+            window.dispose();
+            window.setUndecorated(false);
+            window.setResizable(true);
+            gd.setFullScreenWindow(null);
+            window.setVisible(true);
+            window.pack();
+            window.setLocationRelativeTo(null);
+            isFullscreen = false;
+        } else {
+            // Enter fullscreen
+            window.dispose();
+            window.setUndecorated(true);
+            window.setResizable(false);
+            gd.setFullScreenWindow(window);
+            window.setVisible(true);
+            isFullscreen = true;
+        }
+
+        // Update layout after fullscreen change
+        updateResponsiveLayout();
     }
 }

@@ -5,6 +5,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import javax.sound.sampled.*;
+import java.io.IOException;
 
 public class StoryScreen extends JPanel {
 
@@ -19,6 +21,12 @@ public class StoryScreen extends JPanel {
     private ArrayList<String> paragraphs;
     private ArrayList<Image> images;
     private Runnable onStoryEnd;
+
+    // Audio fields
+    private Clip bgmClip;
+    private FloatControl volumeControl;
+    private Timer fadeOutTimer;
+    private boolean isFadingOut = false;
 
     public StoryScreen(Runnable onStoryEnd) {
         this.onStoryEnd = onStoryEnd;
@@ -43,6 +51,8 @@ public class StoryScreen extends JPanel {
 
         imagePanel.setText(paragraphs.get(0));
         imagePanel.setCurrentImage(images.get(0));
+
+        playBackgroundMusic("/assets/bgm.wav");
 
         setFocusable(true);
         addKeyListener(new KeyAdapter() {
@@ -77,6 +87,39 @@ public class StoryScreen extends JPanel {
         } catch (Exception e) {
             System.err.println("Failed to load image: " + path);
             return null;
+        }
+    }
+
+    private void playBackgroundMusic(String path) {
+        try {
+            AudioInputStream audioInput = AudioSystem.getAudioInputStream(getClass().getResource(path));
+            bgmClip = AudioSystem.getClip();
+            bgmClip.open(audioInput);
+            volumeControl = (FloatControl) bgmClip.getControl(FloatControl.Type.MASTER_GAIN);
+            bgmClip.loop(Clip.LOOP_CONTINUOUSLY);
+            bgmClip.start();
+        } catch (Exception e) {
+            System.err.println("Failed to play background music: " + path);
+            e.printStackTrace();
+        }
+    }
+
+    public void fadeOutMusic() {
+        if (bgmClip != null && bgmClip.isRunning() && !isFadingOut) {
+            isFadingOut = true;
+            final float[] currentVolume = {volumeControl.getValue()};
+            fadeOutTimer = new Timer(100, e -> {
+                currentVolume[0] -= 2.0f;
+                if (currentVolume[0] > -80.0f) {
+                    volumeControl.setValue(currentVolume[0]);
+                } else {
+                    bgmClip.stop();
+                    bgmClip.close();
+                    fadeOutTimer.stop();
+                    isFadingOut = false;
+                }
+            });
+            fadeOutTimer.start();
         }
     }
 

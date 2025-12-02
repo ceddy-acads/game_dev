@@ -112,13 +112,10 @@ public class GameLoop extends JLayeredPane implements Runnable {
         dialogueUI.setVisible(false);
         this.add(dialogueUI, JLayeredPane.MODAL_LAYER);
 
-<<<<<<< HEAD
         // Set inventory reference for player
         player.setInventory(gameInventory);
 
         // Initialize hotbar
-=======
->>>>>>> 000b6cdf8bc033d977f3b3050edcb55504e50f00
         hotbar = new Hotbar(this.width, this.height, gameInventory);
         hotbar.setPlayer(player);
         gameInventory.setBounds(0, 0, this.width, this.height);
@@ -285,11 +282,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - this.width));
         cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - this.height));
 
-<<<<<<< HEAD
-
         // Update player
-=======
->>>>>>> 000b6cdf8bc033d977f3b3050edcb55504e50f00
         player.update(deltaTime);
         player.updateDialogue();
 
@@ -297,7 +290,6 @@ public class GameLoop extends JLayeredPane implements Runnable {
             enemy.update(player.getX(), player.getY(), player, cameraX, cameraY, this.width, this.height);
         }
 
-<<<<<<< HEAD
         // Check for dropped item pickup
         try {
             java.util.List<int[]> droppedItems = (java.util.List<int[]>) objectM.getClass().getMethod("getDroppedItems").invoke(objectM);
@@ -318,10 +310,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
             // Ignore if method fails
         }
 
-
         // Update NPCs
-=======
->>>>>>> 000b6cdf8bc033d977f3b3050edcb55504e50f00
         for (NPC npc : npcs) {
             npc.update();
         }
@@ -673,7 +662,6 @@ public class GameLoop extends JLayeredPane implements Runnable {
         g2d.fillRoundRect(barsX, manaBarY, manaWidth, barHeight, arcWidth, arcHeight);
     }
 
-<<<<<<< HEAD
     private void loadSkillIcons() {
         try {
             skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
@@ -828,8 +816,6 @@ public class GameLoop extends JLayeredPane implements Runnable {
     }
 
     // Define a functional interface for the game over callback
-=======
->>>>>>> 000b6cdf8bc033d977f3b3050edcb55504e50f00
     public interface GameOverCallback {
         void onGameOver(BufferedImage screenshot);
     }

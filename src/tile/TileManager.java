@@ -9,8 +9,8 @@ import javax.imageio.ImageIO;
 public class TileManager {
     private Tile[] tile;
     private int tileSize = 80; // Default tile size, synced with GameLoop
-    private int mapWidth = 50; // Expanded map width
-    private int mapHeight = 50; // Expanded map height
+    private int mapWidth = 64; // Expanded map width
+    private int mapHeight = 64; // Expanded map height
     private int[][] tileMap; // 2D array to store tile IDs
 
     public TileManager(Object gameLoop) {

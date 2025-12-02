@@ -724,7 +724,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
     }
 
     private void spawnMiniBoss() {
-        enemies.add(new Enemy(700, 800, Enemy.EnemyType.MINI_BOSS));
+        // Spawn at same location as wave enemies (central spawn point)
+        enemies.add(new Enemy(1200, 2300, Enemy.EnemyType.MINI_BOSS));
         System.out.println("Mini Boss spawned!");
     }
 

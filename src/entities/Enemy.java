@@ -69,8 +69,8 @@ public class Enemy {
     private Object tileManager; // Reference to TileManager for collision
     private Object inventory; // Reference to InventoryUI for powerup drops
     private Object objectManager; // Reference to ObjectManager for spawning dropped powerups
-    private final int collisionWidth = 48;  // Collision box matching player size (48x48)
-    private final int collisionHeight = 48; // Collision box matching player size (48x48)
+    private int collisionWidth;  // Collision box size (will be set based on enemy type)
+    private int collisionHeight; // Collision box size (will be set based on enemy type)
 
     private void loadSprites() {
         try {
@@ -205,32 +205,50 @@ public class Enemy {
         this.x = (double) x;
         this.y = (double) y;
         this.type = type;
-        this.width = 186; // Set to 256x256 size
-        this.height = 186; // Set to 256x256 size
 
         // Set stats based on enemy type
         switch (type) {
             case BASIC:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 400;
                 this.speed = 1.2;
                 this.attackDamage = 20; // Increased from 10 to 20
                 break;
             case FAST:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 300;
                 this.speed = 1.8;
                 this.attackDamage = 16; // Increased from 8 to 16
                 break;
             case TANK:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 600;
                 this.speed = 0.75;
                 this.attackDamage = 30; // Increased from 15 to 30
                 break;
             case MINI_BOSS:
+                this.width = 400; // Large size
+                this.height = 400;
+                this.collisionWidth = 200; // Large collision box
+                this.collisionHeight = 200;
                 this.hp = 1500;
                 this.speed = 1.05;
                 this.attackDamage = 50; // Increased from 25 to 50
                 break;
             case MINOTAUR:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 800;
                 this.speed = 1.4;
                 this.attackDamage = 35; // Strong melee attacker
@@ -421,11 +439,12 @@ public class Enemy {
 
         // Only draw HP bar if not dying
         if (!dying && hp > 0) {
-            // HP bar (using 400 as max HP) - drawn at original position
+            // HP bar - drawn at original position
             g.setColor(Color.WHITE);
             g.fillRect(screenX, screenY - 10, width, 5);
             g.setColor(Color.GREEN);
-            g.fillRect(screenX, screenY - 10, (int) (width * (hp / 400.0)), 5);
+            double maxHp = (type == EnemyType.MINI_BOSS) ? 1500.0 : 400.0;
+            g.fillRect(screenX, screenY - 10, (int) (width * (hp / maxHp)), 5);
         }
     }
  

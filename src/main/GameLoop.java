@@ -450,12 +450,12 @@ public class GameLoop extends JLayeredPane implements Runnable {
     }
 
     private void drawHotbarKeys(Graphics2D g2d) {
-        int slotSize = 48;
+        int slotSize = 120; // Increased from 80 to 120 for even larger skill icons
         int numSlots = 3; // Reduced from 5 to 3 skill slots
-        int spacing = 10; // Spacing between slots
+        int spacing = 30; // Increased spacing from 20 to 30 for better visual separation with larger icons
         int hotbarWidth = numSlots * slotSize + (numSlots - 1) * spacing;
         int hotbarX = (this.width - hotbarWidth) / 2; // Centers the slots horizontally
-        int hotbarY = this.height - slotSize - 10;
+        int hotbarY = this.height - slotSize - 15; // Adjusted Y position for larger icons
 
         // Draw skill icons and cooldown overlays
         for (int i = 0; i < numSlots; i++) {

@@ -80,8 +80,8 @@ public class NPC {
     public NPC(int x, int y) {
         this.x = (double) x;
         this.y = (double) y;
-        this.width = 48; // assuming tile size
-        this.height = 48;
+        this.width = 128; // Set to 256x256 size
+        this.height = 128; // Set to 256x256 size
         loadSprites();
     }
 

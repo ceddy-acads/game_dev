@@ -46,6 +46,16 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
         addMouseListener(this);
         addMouseMotionListener(this);
         setFocusable(true);
+
+        // Add key listener for spacebar to trigger play
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                    onPlay.run();
+                }
+            }
+        });
     }
 
     private void loadAssets() {

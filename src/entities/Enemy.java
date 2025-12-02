@@ -118,29 +118,29 @@ public class Enemy {
         this.x = (double) x;
         this.y = (double) y;
         this.type = type;
-        this.width = 128; // Set to frame width
-        this.height = 128; // Set to frame height
+        this.width = 186; // Set to 256x256 size
+        this.height = 186; // Set to 256x256 size
 
         // Set stats based on enemy type
         switch (type) {
             case BASIC:
                 this.hp = 400;
-                this.speed = 0.8;
+                this.speed = 1.2;
                 this.attackDamage = 20; // Increased from 10 to 20
                 break;
             case FAST:
                 this.hp = 300;
-                this.speed = 1.2;
+                this.speed = 1.8;
                 this.attackDamage = 16; // Increased from 8 to 16
                 break;
             case TANK:
                 this.hp = 600;
-                this.speed = 0.5;
+                this.speed = 0.75;
                 this.attackDamage = 30; // Increased from 15 to 30
                 break;
             case MINI_BOSS:
                 this.hp = 1500;
-                this.speed = 0.7;
+                this.speed = 1.05;
                 this.attackDamage = 50; // Increased from 25 to 50
                 break;
         }
@@ -253,19 +253,13 @@ public class Enemy {
                 frameTimer = 0;
             }
             sprite = walkFrames[currentFrame];
-        } else if (dist <= 1) { // Only attack when physically close to player
+        } else if (dist <= 0.8) { // Attack when reasonably close to player (touching distance)
             // Close enough to attack or already attacking
             if (!attacking && attackCooldown <= 0) {
                 attacking = true;
                 attackFrame = 0;
-                attackCooldown = 45; // Reduced from 90 to 45 (attack twice as fast)
+                attackCooldown = 5; // Very short cooldown (5 frames) for continuous attacks when in range
                 System.out.println("Enemy Attacking!");
-                // Randomize enemy attack damage with a minimum of 5
-                Random rand = new Random();
-                int minEnemyDamage = 5;
-                int maxEnemyDamage = attackDamage + 5; // e.g., if base attackDamage is 10, max will be 15
-                int randomizedDamage = minEnemyDamage + rand.nextInt(maxEnemyDamage - minEnemyDamage + 1);
-                player.takeDamage(randomizedDamage); // Deal randomized damage at the start of the attack animation
             }
 
             if (attacking) {
@@ -274,13 +268,24 @@ public class Enemy {
                     attackFrame++;
                     attackFrameTimer = 0;
 
+                    // Deal damage on the middle frame of the attack animation (frame 2 out of 4)
+                    if (attackFrame == 2 && dist <= 1) { // Double-check range at the moment of impact
+                        // Randomize enemy attack damage with a minimum of 5
+                        Random rand = new Random();
+                        int minEnemyDamage = 5;
+                        int maxEnemyDamage = attackDamage + 5; // e.g., if base attackDamage is 10, max will be 15
+                        int randomizedDamage = minEnemyDamage + rand.nextInt(maxEnemyDamage - minEnemyDamage + 1);
+                        player.takeDamage(randomizedDamage); // Deal randomized damage at the moment of impact
+                        System.out.println("Enemy dealt " + randomizedDamage + " damage!");
+                    }
+
                     // End attack if finished all frames
                     if (attackFrame >= attackFrames.length) {
                         attackFrame = 0;
                         attacking = false;
                     }
                 }
-                
+
                 if (attacking) {
                     sprite = attackFrames[attackFrame];
                 }

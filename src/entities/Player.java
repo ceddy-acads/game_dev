@@ -95,8 +95,8 @@ public class Player {
     private int currentDirection = DOWN;
     
     // Player dimensions for collision
-    public final int playerWidth = 128;
-    public final int playerHeight = 128;
+    public final int playerWidth = 256;
+    public final int playerHeight = 256;
 
     // Smaller collision box for better movement
     private final int collisionWidth = 48;

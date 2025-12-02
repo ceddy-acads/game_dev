@@ -31,10 +31,10 @@ public class WorldObject {
         } catch (IOException e) {
             System.err.println("Failed to load object image: " + imagePath);
             this.image = null;
-            this.width = 50; // Default tile size
-            this.height = 50;
-            this.displayWidth = 160; // Scaled up
-            this.displayHeight = 160;
+            this.width = 140; // Default tile size
+            this.height = 160;
+            this.displayWidth = 150; // Scaled up
+            this.displayHeight = 150;
         }
     }
 

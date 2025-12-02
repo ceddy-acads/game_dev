@@ -34,8 +34,7 @@ public class ObjectManager {
         "/assets/objects/Fern_tree3.png",
         "/assets/objects/Oval_leaf_tree1.png",
         "/assets/objects/Oval_leaf_tree2.png",
-        "/assets/objects/Oval_leaf_tree3.png",
-        "/assets/tiles/hut.png" // Add hut as an object
+        "/assets/objects/Oval_leaf_tree3.png"
     };
 
     private String[] objectNames = {
@@ -43,8 +42,7 @@ public class ObjectManager {
         "Caury Pearl 1", "Caury Pearl 2", "Caury White 1", "Caury White 2",
         "Oval Rock 1", "Oval Rock 2", "Oval Rock 3", "Oval Rock 4", "Oval Rock 5",
         "Fern Tree 2", "Fern Tree 3",
-        "Oval Leaf Tree 1", "Oval Leaf Tree 2", "Oval Leaf Tree 3",
-        "Hut" // Add hut name
+        "Oval Leaf Tree 1", "Oval Leaf Tree 2", "Oval Leaf Tree 3"
     };
 
     // Define which objects can spawn on which tile types
@@ -72,14 +70,15 @@ public class ObjectManager {
 
         // ALL objects can ONLY spawn on grass tiles (tile 0)
         // No objects should spawn on roads, walls, water, earth, or any other tile types
+        // This ensures objects don't overlap roads or any tiles except grass
         for (int i = 0; i < numObjects; i++) {
-            canSpawnOnGrass[i] = true;
-            canSpawnOnEarth[i] = false;
+            canSpawnOnGrass[i] = true;  // Only grass tiles (tile 0)
+            canSpawnOnEarth[i] = false; // No earth tiles (tile 3)
         }
     }
 
     private void spawnObjects() {
-        int maxObjects = 150; // Maximum number of objects to spawn
+        int maxObjects = 100; // Maximum number of objects to spawn
         int minSpacing = 3; // Minimum spacing in tiles between objects
 
         for (int i = 0; i < maxObjects; i++) {
@@ -120,10 +119,15 @@ public class ObjectManager {
             String imagePath = objectImages[objectIndex];
             String name = objectNames[objectIndex];
 
-            // All objects should have collision
+            // All objects MUST have collision enabled - they block player and enemy movement
             boolean collision = true;
 
             WorldObject obj = new WorldObject(pixelX, pixelY, imagePath, name, collision);
+
+            // Verify collision is enabled for debugging
+            if (!obj.hasCollision()) {
+                System.err.println("WARNING: Object " + name + " was created without collision!");
+            }
             objects.add(obj);
 
             return true;
@@ -194,6 +198,27 @@ public class ObjectManager {
             }
         }
 
+        // Check spacing from collision tiles (walls, water, etc.)
+        // Objects should not spawn adjacent to collision tiles to prevent overlap
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue; // Skip center tile
+
+                int checkX = tileX + dx;
+                int checkY = tileY + dy;
+
+                // Check bounds
+                if (checkX >= 0 && checkX < mapWidth && checkY >= 0 && checkY < mapHeight) {
+                    int tileId = tileM.getTileId(checkX, checkY);
+
+                    // If adjacent tile has collision, don't spawn here
+                    if (tileId == 1 || tileId == 2 || tileId == 5 || tileId == 11) {
+                        return false; // Too close to collision tile
+                    }
+                }
+            }
+        }
+
         return true;
     }
 
@@ -203,8 +228,8 @@ public class ObjectManager {
             int objX = obj.getX();
             int objY = obj.getY();
 
-            // Hut gets much larger scaling (5x instead of 2x)
-            float scaleFactor = obj.getName().equals("Hut") ? 5.0f : 2.0f;
+            // Reduced scaling for better collision sizing
+            float scaleFactor = 2.0f;
             int objWidth = (int)(obj.getWidth() * scaleFactor);
             int objHeight = (int)(obj.getHeight() * scaleFactor);
 
@@ -226,20 +251,29 @@ public class ObjectManager {
     }
 
     // Check if a position collides with any object
-    // Use smaller collision dimensions for better gameplay
+    // Use display size (2x scale) with accurate positioning for right-side collision
     public boolean isObjectCollision(int x, int y, int width, int height) {
         for (WorldObject obj : objects) {
             if (!obj.hasCollision()) continue;
 
-            // Use original dimensions for collision (not scaled display size)
-            // This prevents objects from having oversized collision boxes
-            int objWidth = obj.getWidth();
-            int objHeight = obj.getHeight();
+            // Use the same 2x scaling as display for accurate collision
+            // Calculate the actual visual boundaries where the object appears
+            float scaleFactor = 2.0f;
+            int visualX = obj.getX(); // Visual starts at object position
+            int visualY = obj.getY(); // Visual starts at object position
+            int visualWidth = (int)(obj.getWidth() * scaleFactor);
+            int visualHeight = (int)(obj.getHeight() * scaleFactor);
 
-            if (x < obj.getX() + objWidth &&
-                x + width > obj.getX() &&
-                y < obj.getY() + objHeight &&
-                y + height > obj.getY()) {
+            // Collision area covers the full visual object size
+            int collisionX = visualX;
+            int collisionWidth = visualWidth;
+            int collisionHeight = visualHeight;
+            int collisionY = visualY;
+
+            if (x < collisionX + collisionWidth &&
+                x + width > collisionX &&
+                y < collisionY + collisionHeight &&
+                y + height > collisionY) {
                 return true;
             }
         }

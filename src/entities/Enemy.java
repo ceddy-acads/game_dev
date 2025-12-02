@@ -23,11 +23,12 @@ public class Enemy {
     public int width, height;
     public int hp;
     public double speed;
-    private BufferedImage sprite;
+    private Image sprite;
     private boolean alive = true;
     private int flashRed = 0;
-    private BufferedImage[] idleFrames;
-    private BufferedImage[] walkFrames;
+    private Image[] idleFrames;
+    private Image[] walkFrames;
+    private boolean isAnimatedGif = false;
     private int currentFrame = 0;
     private int frameDelay = 10;
     private int frameTimer = 0;
@@ -45,7 +46,7 @@ public class Enemy {
 
 
     //FOR ATTACKING
-    private BufferedImage[] attackFrames;
+    private Image[] attackFrames;
     private int attackFrame = 0;
     private int attackTimer = 0;
     private int attackDelay = 4; // lower = faster animation
@@ -55,7 +56,7 @@ public class Enemy {
     private int attackFrameTimer = 0;
 
     //FOR DEATH ANIMATION
-    private BufferedImage[] deathFrames;
+    private Image[] deathFrames;
     private int deathFrame = 0;
     private int deathFrameDelay = 8; // Slower death animation
     private int deathFrameTimer = 0;
@@ -73,7 +74,10 @@ public class Enemy {
 
     private void loadSprites() {
         try {
-            if (type == EnemyType.MINOTAUR) {
+            if (type == EnemyType.MINI_BOSS) {
+                // Load Mini Boss-specific sprites
+                loadMiniBossSprites();
+            } else if (type == EnemyType.MINOTAUR) {
                 // Load Minotaur-specific sprites
                 loadMinotaurSprites();
             } else {
@@ -163,6 +167,40 @@ public class Enemy {
 
         sprite = idleFrames[0]; // default image
     }
+
+    private void loadMiniBossSprites() throws IOException {
+        isAnimatedGif = true;
+
+        // FOR WALKING - Using nightborne_run.gif
+        Image nightborneRun = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/assets/characters/enemies/nightborne_run.gif"));
+        walkFrames = new Image[1];
+        walkFrames[0] = nightborneRun;
+
+        // Use the same for idle
+        idleFrames = new Image[1];
+        idleFrames[0] = nightborneRun;
+
+        // FOR ATTACKING - Use standard Attack_1.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
+        int attackFrameWidth = 128; // 512 / 4
+        int attackFrameHeight = 128;
+        attackFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
+        }
+
+        // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
+        int deathFrameWidth = 128; // 512 / 4
+        int deathFrameHeight = 128;
+        deathFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
+        }
+
+        sprite = idleFrames[0]; // default image
+    }
+
     public Enemy(int x, int y, EnemyType type) {
         this.x = (double) x;
         this.y = (double) y;
@@ -257,10 +295,12 @@ public class Enemy {
                 facingLeft = dx < 0; // Face the direction of retreat
 
                 // Animate walking during retreat
-                frameTimer++;
-                if (frameTimer >= frameDelay) {
-                    currentFrame = (currentFrame + 1) % walkFrames.length;
-                    frameTimer = 0;
+                if (!isAnimatedGif) {
+                    frameTimer++;
+                    if (frameTimer >= frameDelay) {
+                        currentFrame = (currentFrame + 1) % walkFrames.length;
+                        frameTimer = 0;
+                    }
                 }
                 sprite = walkFrames[currentFrame];
             } else {
@@ -301,10 +341,12 @@ public class Enemy {
             applyCollisionMovement(moveX, moveY);
 
             // Animate walking
-            frameTimer++;
-            if (frameTimer >= frameDelay) {
-                currentFrame = (currentFrame + 1) % walkFrames.length;
-                frameTimer = 0;
+            if (!isAnimatedGif) {
+                frameTimer++;
+                if (frameTimer >= frameDelay) {
+                    currentFrame = (currentFrame + 1) % walkFrames.length;
+                    frameTimer = 0;
+                }
             }
             sprite = walkFrames[currentFrame];
         } else if (dist <= 0.8 || attacking) { // Attack when reasonably close to player OR continue attack animation if already started
@@ -349,10 +391,12 @@ public class Enemy {
             } else {
                 // If not attacking and close, set to idle and manage cooldown
                 // Animate idle
-                idleFrameTimer++;
-                if (idleFrameTimer >= frameDelay) {
-                    idleCurrentFrame = (idleCurrentFrame + 1) % idleFrames.length;
-                    idleFrameTimer = 0;
+                if (!isAnimatedGif) {
+                    idleFrameTimer++;
+                    if (idleFrameTimer >= frameDelay) {
+                        idleCurrentFrame = (idleCurrentFrame + 1) % idleFrames.length;
+                        idleFrameTimer = 0;
+                    }
                 }
                 sprite = idleFrames[idleCurrentFrame];
                 if (attackCooldown > 0) {

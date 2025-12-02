@@ -144,6 +144,11 @@ public class Main {
         actScreen = new ActScreen(Main::startActualGame);
         mainPanel.add(actScreen, "ACT");
 
+        // Fade out music from story screen
+        if (storyScreen != null) {
+            storyScreen.fadeOutMusic();
+        }
+
         // Show Act screen immediately (ActScreen handles its own fade transitions)
         cardLayout.show(mainPanel, "ACT");
         actScreen.requestFocusInWindow();

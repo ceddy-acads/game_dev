@@ -26,6 +26,8 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
     private final Timer timer;
     private Rectangle playButton = new Rectangle(0, 0, 120, 40);
     private boolean hoveringPlay = false;
+    private Rectangle exitButton = new Rectangle(0, 0, 120, 40);
+    private boolean hoveringExit = false;
 
     private int swordY = 0;
     private boolean swordUp = true;
@@ -47,12 +49,14 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
         addMouseMotionListener(this);
         setFocusable(true);
 
-        // Add key listener for spacebar to trigger play
+        // Add key listener for spacebar to trigger play and ESC to exit
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_SPACE) {
                     onPlay.run();
+                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    System.exit(0);
                 }
             }
         });
@@ -184,7 +188,7 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
 
         int bx = getWidth() / 2 - 60;
         int by = getHeight() / 2 + 100;
-        playButton.setBounds(bx, by, 200, 40);
+        playButton.setBounds(bx, by, 120, 40);
 
         if (hoveringPlay) {
             g.setColor(new Color(255, 255, 255, 230));
@@ -203,6 +207,26 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
         int tx2 = bx + (120 - fm.stringWidth(text)) / 2;
         int ty2 = by + ((40 - fm.getHeight()) / 2) + fm.getAscent();
         g.drawString(text, tx2, ty2);
+
+        // Exit button below play button
+        int ex = bx;
+        int ey = by + 60;
+        exitButton.setBounds(ex, ey, 120, 40);
+
+        if (hoveringExit) {
+            g.setColor(new Color(255, 255, 255, 230));
+            g.fillRoundRect(ex - 3, ey - 3, 126, 46, 12, 12);
+            g.setColor(new Color(255, 120, 0));
+        } else {
+            g.setColor(Color.red);
+        }
+        g.fillRoundRect(ex, ey, 120, 40, 10, 10);
+
+        g.setColor(Color.BLACK);
+        String exitText = "EXIT";
+        int ex2 = ex + (120 - fm.stringWidth(exitText)) / 2;
+        int ey2 = ey + ((40 - fm.getHeight()) / 2) + fm.getAscent();
+        g.drawString(exitText, ex2, ey2);
         if (flashAlpha > 0f) {
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, flashAlpha));
             g.setColor(Color.WHITE);
@@ -216,6 +240,8 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
     public void mouseClicked(MouseEvent e) {
         if (playButton.contains(e.getPoint())) {
             onPlay.run();
+        } else if (exitButton.contains(e.getPoint())) {
+            System.exit(0);
         }
     }
     @Override
@@ -231,6 +257,7 @@ public class GameLandingPage extends JPanel implements ActionListener, MouseList
     @Override
     public void mouseMoved(MouseEvent e) {
         hoveringPlay = playButton.contains(e.getPoint());
+        hoveringExit = exitButton.contains(e.getPoint());
         repaint();
     }
 }

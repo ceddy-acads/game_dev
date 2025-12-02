@@ -23,11 +23,12 @@ public class Enemy {
     public int width, height;
     public int hp;
     public double speed;
-    private BufferedImage sprite;
+    private Image sprite;
     private boolean alive = true;
     private int flashRed = 0;
-    private BufferedImage[] idleFrames;
-    private BufferedImage[] walkFrames;
+    private Image[] idleFrames;
+    private Image[] walkFrames;
+    private boolean isAnimatedGif = false;
     private int currentFrame = 0;
     private int frameDelay = 10;
     private int frameTimer = 0;
@@ -45,7 +46,7 @@ public class Enemy {
 
 
     //FOR ATTACKING
-    private BufferedImage[] attackFrames;
+    private Image[] attackFrames;
     private int attackFrame = 0;
     private int attackTimer = 0;
     private int attackDelay = 4; // lower = faster animation
@@ -55,7 +56,7 @@ public class Enemy {
     private int attackFrameTimer = 0;
 
     //FOR DEATH ANIMATION
-    private BufferedImage[] deathFrames;
+    private Image[] deathFrames;
     private int deathFrame = 0;
     private int deathFrameDelay = 8; // Slower death animation
     private int deathFrameTimer = 0;
@@ -68,12 +69,15 @@ public class Enemy {
     private Object tileManager; // Reference to TileManager for collision
     private Object inventory; // Reference to InventoryUI for powerup drops
     private Object objectManager; // Reference to ObjectManager for spawning dropped powerups
-    private final int collisionWidth = 48;  // Collision box matching player size (48x48)
-    private final int collisionHeight = 48; // Collision box matching player size (48x48)
+    private int collisionWidth;  // Collision box size (will be set based on enemy type)
+    private int collisionHeight; // Collision box size (will be set based on enemy type)
 
     private void loadSprites() {
         try {
-            if (type == EnemyType.MINOTAUR) {
+            if (type == EnemyType.MINI_BOSS) {
+                // Load Mini Boss-specific sprites
+                loadMiniBossSprites();
+            } else if (type == EnemyType.MINOTAUR) {
                 // Load Minotaur-specific sprites
                 loadMinotaurSprites();
             } else {
@@ -163,36 +167,88 @@ public class Enemy {
 
         sprite = idleFrames[0]; // default image
     }
+
+    private void loadMiniBossSprites() throws IOException {
+        isAnimatedGif = true;
+
+        // FOR WALKING - Using nightborne_run.gif
+        Image nightborneRun = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/assets/characters/enemies/mini-boss/nightborne_run.gif"));
+        walkFrames = new Image[1];
+        walkFrames[0] = nightborneRun;
+
+        // Use the same for idle
+        idleFrames = new Image[1];
+        idleFrames[0] = nightborneRun;
+
+        // FOR ATTACKING - Use standard Attack_1.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
+        int attackFrameWidth = 128; // 512 / 4
+        int attackFrameHeight = 128;
+        attackFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
+        }
+
+        // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
+        int deathFrameWidth = 128; // 512 / 4
+        int deathFrameHeight = 128;
+        deathFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
+        }
+
+        sprite = idleFrames[0]; // default image
+    }
+
     public Enemy(int x, int y, EnemyType type) {
         this.x = (double) x;
         this.y = (double) y;
         this.type = type;
-        this.width = 186; // Set to 256x256 size
-        this.height = 186; // Set to 256x256 size
 
         // Set stats based on enemy type
         switch (type) {
             case BASIC:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 400;
                 this.speed = 1.2;
                 this.attackDamage = 20; // Increased from 10 to 20
                 break;
             case FAST:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 300;
                 this.speed = 1.8;
                 this.attackDamage = 16; // Increased from 8 to 16
                 break;
             case TANK:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 600;
                 this.speed = 0.75;
                 this.attackDamage = 30; // Increased from 15 to 30
                 break;
             case MINI_BOSS:
+                this.width = 400; // Large size
+                this.height = 400;
+                this.collisionWidth = 200; // Large collision box
+                this.collisionHeight = 200;
                 this.hp = 1500;
                 this.speed = 1.05;
                 this.attackDamage = 50; // Increased from 25 to 50
                 break;
             case MINOTAUR:
+                this.width = 186;
+                this.height = 186;
+                this.collisionWidth = 48;
+                this.collisionHeight = 48;
                 this.hp = 800;
                 this.speed = 1.4;
                 this.attackDamage = 35; // Strong melee attacker
@@ -257,10 +313,12 @@ public class Enemy {
                 facingLeft = dx < 0; // Face the direction of retreat
 
                 // Animate walking during retreat
-                frameTimer++;
-                if (frameTimer >= frameDelay) {
-                    currentFrame = (currentFrame + 1) % walkFrames.length;
-                    frameTimer = 0;
+                if (!isAnimatedGif) {
+                    frameTimer++;
+                    if (frameTimer >= frameDelay) {
+                        currentFrame = (currentFrame + 1) % walkFrames.length;
+                        frameTimer = 0;
+                    }
                 }
                 sprite = walkFrames[currentFrame];
             } else {
@@ -301,10 +359,12 @@ public class Enemy {
             applyCollisionMovement(moveX, moveY);
 
             // Animate walking
-            frameTimer++;
-            if (frameTimer >= frameDelay) {
-                currentFrame = (currentFrame + 1) % walkFrames.length;
-                frameTimer = 0;
+            if (!isAnimatedGif) {
+                frameTimer++;
+                if (frameTimer >= frameDelay) {
+                    currentFrame = (currentFrame + 1) % walkFrames.length;
+                    frameTimer = 0;
+                }
             }
             sprite = walkFrames[currentFrame];
         } else if (dist <= 0.8 || attacking) { // Attack when reasonably close to player OR continue attack animation if already started
@@ -349,10 +409,12 @@ public class Enemy {
             } else {
                 // If not attacking and close, set to idle and manage cooldown
                 // Animate idle
-                idleFrameTimer++;
-                if (idleFrameTimer >= frameDelay) {
-                    idleCurrentFrame = (idleCurrentFrame + 1) % idleFrames.length;
-                    idleFrameTimer = 0;
+                if (!isAnimatedGif) {
+                    idleFrameTimer++;
+                    if (idleFrameTimer >= frameDelay) {
+                        idleCurrentFrame = (idleCurrentFrame + 1) % idleFrames.length;
+                        idleFrameTimer = 0;
+                    }
                 }
                 sprite = idleFrames[idleCurrentFrame];
                 if (attackCooldown > 0) {
@@ -377,11 +439,12 @@ public class Enemy {
 
         // Only draw HP bar if not dying
         if (!dying && hp > 0) {
-            // HP bar (using 400 as max HP) - drawn at original position
+            // HP bar - drawn at original position
             g.setColor(Color.WHITE);
             g.fillRect(screenX, screenY - 10, width, 5);
             g.setColor(Color.GREEN);
-            g.fillRect(screenX, screenY - 10, (int) (width * (hp / 400.0)), 5);
+            double maxHp = (type == EnemyType.MINI_BOSS) ? 1500.0 : 400.0;
+            g.fillRect(screenX, screenY - 10, (int) (width * (hp / maxHp)), 5);
         }
     }
  

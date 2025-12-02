@@ -5,6 +5,8 @@ import java.awt.*;
 import entities.GameLandingPage;
 import entities.StoryScreen;
 import entities.ActScreen;
+import javax.sound.sampled.*;
+import java.io.File;
 import entities.GameOverScreen;
 import java.awt.image.BufferedImage; // Import for BufferedImage
 
@@ -17,6 +19,7 @@ public class Main {
     private static StoryScreen storyScreen;
     private static ActScreen actScreen;
     private static GameOverScreen gameOverScreen;
+    private static Clip backgroundMusic;
 
     public static void main(String[] args) {
         window = new JFrame("Blade Quest");
@@ -49,7 +52,59 @@ public class Main {
 
         window.setVisible(true);
 
+        // Start background music after window is visible
+        playBackgroundMusic("src/assets/bgm.wav");
         cardLayout.show(mainPanel, "LANDING");
+    }
+
+    // Method to play background music
+   private static void playBackgroundMusic(String filepath) {
+    try {
+        File musicPath = new File(filepath);
+        System.out.println("Attempting to load music from: " + musicPath.getAbsolutePath());
+        System.out.println("File exists: " + musicPath.exists());
+        
+        if (musicPath.exists()) {
+            AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
+            backgroundMusic = AudioSystem.getClip();
+            backgroundMusic.open(audioInput);
+            backgroundMusic.loop(Clip.LOOP_CONTINUOUSLY);
+            backgroundMusic.start();
+            System.out.println("Background music started successfully!");
+        } else {
+            System.out.println("Music file not found: " + filepath);
+        }
+    } catch (Exception e) {
+        System.out.println("Error playing background music:");
+        e.printStackTrace();
+    }
+}
+    // Method to stop background music
+    public static void stopBackgroundMusic() {
+        if (backgroundMusic != null && backgroundMusic.isRunning()) {
+            backgroundMusic.stop();
+        }
+    }
+
+    // Method to restart background music
+    public static void restartBackgroundMusic() {
+        if (backgroundMusic != null) {
+            backgroundMusic.setFramePosition(0);
+            backgroundMusic.start();
+        }
+    }
+
+    // Method to set volume (0.0 to 1.0)
+    public static void setMusicVolume(float volume) {
+        if (backgroundMusic != null) {
+            try {
+                FloatControl volumeControl = (FloatControl) backgroundMusic.getControl(FloatControl.Type.MASTER_GAIN);
+                float dB = (float) (Math.log(volume) / Math.log(10.0) * 20.0);
+                volumeControl.setValue(dB);
+            } catch (Exception e) {
+                System.out.println("Unable to set volume");
+            }
+        }
     }
 
     // Handle responsive layout updates when window is resized
@@ -81,6 +136,7 @@ public class Main {
         // Show story screen immediately without fade transition
         cardLayout.show(mainPanel, "STORY");
         storyScreen.requestFocusInWindow();
+        stopBackgroundMusic(); // Stop music after the landing page
     }
 
     public static void showActScreen() {

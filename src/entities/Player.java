@@ -11,6 +11,7 @@ import java.util.List;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.IOException;
+import main.Main; // Import Main class for sound effects
 
 public class Player {
     private int qCooldown = 0;
@@ -54,6 +55,7 @@ public class Player {
     private Object tileManager; // Reference to TileManager for collision
     private java.util.List<NPC> npcs; // Reference to NPCs for collision
     private Object objectManager; // Reference to ObjectManager for collision
+    private Object inventory; // Reference to InventoryUI
 
     // State constants
     private static final int IDLE = 0;
@@ -126,6 +128,14 @@ public class Player {
 
     public int getTotalDefense() {
         return baseDefense + equippedDefense;
+    }
+
+    public int getEquippedAttack() {
+        return equippedAttack;
+    }
+
+    public int getEquippedDefense() {
+        return equippedDefense;
     }
 
     public void setEquippedStats(int attack, int defense) {
@@ -780,6 +790,7 @@ public class Player {
             case DOWN_RIGHT: sx = drawX + offset; sy = drawY + offset; break;
         }
         slashes.add(new SlashAttack(sx, sy, currentDirection, getTotalAttack()));
+        Main.playSoundEffect("src/assets/audio/sword_slash.wav"); // Play sword sound effect
         state = ATTACKING;
     }
 
@@ -800,6 +811,7 @@ public class Player {
             case DOWN_RIGHT: sx = drawX + offset; sy = drawY + offset; break;
         }
         skillWAttacks.add(new SkillWAttack(sx, sy, currentDirection, getTotalAttack()));
+        Main.playSoundEffect("src/assets/audio/skill_2.wav"); // Play sound effect for Skill W
         state = ATTACKING;
     }
 
@@ -875,6 +887,7 @@ public class Player {
             case DOWN_RIGHT: sx = drawX + offset; sy = drawY + offset; break;
         }
         skillWAttacks.add(new SkillWAttack(sx, sy, currentDirection, getTotalAttack()));
+        Main.playSoundEffect("src/assets/audio/skill_1.wav"); // Play sound effect for Skill B
         state = FIRESPLASH;
         frameIndex = 0;
         accumulatedAnimationTime = 0f;
@@ -888,6 +901,7 @@ public class Player {
         int centerX = (int) Math.round(px);
         int centerY = (int) Math.round(py);
         freezeArea = new Rectangle(centerX - freezeRadius, centerY - freezeRadius, freezeRadius * 2, freezeRadius * 2);
+        Main.playSoundEffect("src/assets/audio/skill_2.wav"); // Play sound effect for Skill N
     }
     public void useSkillM() {
         state = LIGHTNINGSTORM;
@@ -898,6 +912,7 @@ public class Player {
         int centerX = (int) Math.round(px);
         int centerY = (int) Math.round(py);
         lightningArea = new Rectangle(centerX - lightningRadius, centerY - lightningRadius, lightningRadius * 2, lightningRadius * 2);
+        Main.playSoundEffect("src/assets/audio/skill_3.wav"); // Play sound effect for Skill M
     }
 
     // Method to set TileManager reference for collision detection
@@ -920,6 +935,11 @@ public class Player {
         this.dialogueUI = dialogueUI;
     }
 
+    // Method to set InventoryUI reference
+    public void setInventory(Object inventory) {
+        this.inventory = inventory;
+    }
+
     private Object dialogueUI;
 
     // Dialogue system
@@ -937,6 +957,24 @@ public class Player {
                     break;
                 }
             }
+        }
+    }
+
+    // Method to pick up dropped sword icon (add to inventory)
+    public void pickUpSword() {
+        if (inventory != null) {
+            try {
+                inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, "sword", 1);
+                System.out.println("Picked up sword and added to inventory");
+            } catch (Exception e) {
+                System.err.println("Failed to add sword to inventory");
+            }
+        } else {
+            // Fallback: auto-equip if no inventory
+            java.util.Random rand = new java.util.Random();
+            int boost = 10 + rand.nextInt(21); // 10-30 attack boost
+            setEquippedStats(equippedAttack + boost, equippedDefense);
+            System.out.println("Auto-picked up sword, attack increased by " + boost);
         }
     }
 

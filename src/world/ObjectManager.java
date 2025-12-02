@@ -41,6 +41,7 @@ public class ObjectManager {
     // Define which objects can spawn on which tile types
     private boolean[] canSpawnOnGrass; // true for objects that can spawn on grass tiles
     private boolean[] canSpawnOnEarth; // true for objects that can spawn on earth tiles
+    private boolean[] objectCollidable; // true for objects that block movement
 
     public ObjectManager(TileManager tileM) {
         this.tileM = tileM;
@@ -50,8 +51,9 @@ public class ObjectManager {
         this.mapWidth = tileM.getMapWidth();
         this.mapHeight = tileM.getMapHeight();
 
-        // Initialize spawn restrictions
+        // Initialize spawn restrictions and collision properties
         initializeSpawnRestrictions();
+        initializeObjectCollidable();
 
         spawnObjects();
     }
@@ -67,6 +69,30 @@ public class ObjectManager {
         for (int i = 0; i < numObjects; i++) {
             canSpawnOnGrass[i] = true;  // Only grass tiles (tile 0)
             canSpawnOnEarth[i] = false; // No earth tiles (tile 3)
+        }
+    }
+
+    private void initializeObjectCollidable() {
+        int numObjects = objectImages.length;
+        objectCollidable = new boolean[numObjects];
+
+        // Set specific objects as non-collidable (mushrooms, small plants)
+        // Indices based on objectNames array:
+        // Black Mushrooms 1, Black Mushrooms 2 (0, 1) -> false
+        // Orange Mushrooms 1, Orange Mushrooms 2 (2, 3) -> false
+        // Caury Pearl 1, Caury Pearl 2 (4, 5) -> false
+        // Caury White 1, Caury White 2 (6, 7) -> false
+        // Oval Rock 1-5 (8-12) -> true
+        // Fern Tree 2, Fern Tree 3 (13, 14) -> false
+        // Oval Leaf Tree 1, Oval Leaf Tree 2, Oval Leaf Tree 3 (15, 16, 17) -> false
+
+        for (int i = 0; i < numObjects; i++) {
+            String name = objectNames[i];
+            if (name.contains("Mushroom") || name.contains("Caury") || name.contains("Fern Tree") || name.contains("Oval Leaf Tree") || name.contains("Sword")) {
+                objectCollidable[i] = false; // Player can walk through
+            } else {
+                objectCollidable[i] = true; // Rocks, larger objects will block
+            }
         }
     }
 
@@ -204,15 +230,11 @@ public class ObjectManager {
             String imagePath = objectImages[objectIndex];
             String name = objectNames[objectIndex];
 
-            // All objects MUST have collision enabled - they block player and enemy movement
-            boolean collision = true;
+            // Use the determined collision property for the object
+            boolean collision = objectCollidable[objectIndex];
 
             WorldObject obj = new WorldObject(pixelX, pixelY, imagePath, name, collision);
 
-            // Verify collision is enabled for debugging
-            if (!obj.hasCollision()) {
-                System.err.println("WARNING: Object " + name + " was created without collision!");
-            }
             objects.add(obj);
 
             return true;
@@ -333,6 +355,28 @@ public class ObjectManager {
     // Set NPC reference for spawn avoidance
     public void setNPCs(List<?> npcs) {
         this.npcs = npcs;
+    }
+
+    // Add an object dynamically (for drops, etc.)
+    public void addObject(int x, int y, String imagePath, String name, boolean collision) {
+        WorldObject obj = new WorldObject(x, y, imagePath, name, collision);
+        objects.add(obj);
+    }
+
+    // Add dropped item icon (for enemy drops)
+    private java.util.List<int[]> droppedItems = new java.util.ArrayList<>();
+    public void addDrop(int x, int y) {
+        droppedItems.add(new int[]{x, y});
+    }
+
+    public java.util.List<int[]> getDroppedItems() {
+        return droppedItems;
+    }
+
+    public void removeDrop(int index) {
+        if (index >= 0 && index < droppedItems.size()) {
+            droppedItems.remove(index);
+        }
     }
 
     // Check if a position collides with any object

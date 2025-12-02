@@ -108,6 +108,31 @@ public class Main {
         }
     }
 
+    // Method to play a one-shot sound effect
+    public static void playSoundEffect(String filepath) {
+        try {
+            // Convert path to resource path
+            String resourcePath = "/" + filepath.replace("src/", "");
+            java.io.InputStream audioStream = Main.class.getResourceAsStream(resourcePath);
+            if (audioStream != null) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(audioStream);
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioInput);
+                clip.start();
+                clip.addLineListener(event -> {
+                    if (event.getType() == LineEvent.Type.STOP) {
+                        clip.close();
+                    }
+                });
+            } else {
+                System.out.println("Sound effect file not found: " + filepath);
+            }
+        } catch (Exception e) {
+            System.out.println("Error playing sound effect:");
+            e.printStackTrace();
+        }
+    }
+
     // Handle responsive layout updates when window is resized
     private static void updateResponsiveLayout() {
         // Get current window size
@@ -175,6 +200,8 @@ public class Main {
     // Modified callback to accept screenshot
     public static void showGameOverScreenWithScreenshot(BufferedImage screenshot) {
         gameOverScreen.setBackgroundImage(screenshot); // Set the screenshot as background
+        stopBackgroundMusic(); // Stop any playing background music
+        playSoundEffect("src/assets/audio/game_over_bad_chest.wav"); // Play game over sound
         new FadeTransition(window, FadeTransition.FadeType.FADE_OUT, () -> {
             cardLayout.show(mainPanel, "GAME_OVER");
             gameOverScreen.requestFocusInWindow();

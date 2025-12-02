@@ -17,7 +17,7 @@ public class Enemy {
 
     //FOR DAMAGE
     private int attackDamage = 10;
-    
+
     // Use doubles for precise position tracking
     private double x, y;
     public int width, height;
@@ -34,15 +34,15 @@ public class Enemy {
     private int frameTimer = 0;
     private int idleCurrentFrame = 0;
     private int idleFrameTimer = 0;
-    
+
     private boolean facingLeft = false;
-    
+
     // Retreat logic
     private boolean retreating = false;
     private double retreatTargetX, retreatTargetY;
     private final double RETREAT_DISTANCE = 300; // How far enemies will try to spread
     private final double RETREAT_SPEED_MULTIPLIER = 0.5; // Retreat slower
-    
+
 
 
     //FOR ATTACKING
@@ -107,7 +107,7 @@ public class Enemy {
         for (int i = 0; i < 5; i++) {
             walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
         }
-        
+
         // FOR ATTACKING - Using Attack_1.png spritesheet (512x128, 4 frames in a single row)
         BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
         int attackFrameWidth = 128; // 512 / 4
@@ -134,19 +134,19 @@ public class Enemy {
         BufferedImage walkSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/minotaur_walk.png"));
         int frameWidth = 785 / 8; // 785x94, 8 frames in a single row
         int frameHeight = 94;
-        
+
         // Load walk frames (8 frames)
         walkFrames = new BufferedImage[8];
         for (int i = 0; i < 8; i++) {
             walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
         }
-        
+
         // Use walk frames as idle frames too (reuse animation)
         idleFrames = new BufferedImage[8];
         for (int i = 0; i < 8; i++) {
             idleFrames[i] = walkFrames[i];
         }
-        
+
         // FOR ATTACKING - Use standard Attack_1.png spritesheet (512x128, 4 frames in a single row)
         BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
         int attackFrameWidth = 128; // 512 / 4
@@ -296,7 +296,7 @@ public class Enemy {
         if (!player.isAlive()) {
             // Player is dead, retreat by moving away from player's position
             retreating = true;
-            
+
             // Calculate direction away from player
             double dx = x - playerX; // Reversed: away from player
             double dy = y - playerY; // Reversed: away from player
@@ -335,7 +335,7 @@ public class Enemy {
         } else {
             retreating = false; // Reset retreating flag if player is alive again
         }
-        
+
         // Normal enemy behavior (move toward player and attack)
         double dx = playerX - x;
         double dy = playerY - y;
@@ -447,7 +447,7 @@ public class Enemy {
             g.fillRect(screenX, screenY - 10, (int) (width * (hp / maxHp)), 5);
         }
     }
- 
+
     public Rectangle getBounds() {
         return new Rectangle((int) x, (int) y, width, height);
     }
@@ -473,42 +473,49 @@ public class Enemy {
     }
 
     private void dropPowerup() {
-        if (inventory == null) return;
+        if (objectManager == null) return;
 
         Random rand = new Random();
-        
-        // Determine drop chance based on enemy type
-        // Lower chance for weaker enemies, higher for stronger ones
+
+        // Determine drop chance based on enemy type with visual and potion drops
         double dropChance = 0.0;
         switch (type) {
             case BASIC:
                 dropChance = 0.08; // 8% chance - very low
                 break;
             case FAST:
-                dropChance = 0.12; // 12% chance - low
+                dropChance = 0.15; // 15% chance - low
                 break;
             case TANK:
-                dropChance = 0.15; // 15% chance - low-medium
-                break;
-            case MINOTAUR:
                 dropChance = 0.20; // 20% chance - medium
                 break;
+            case MINOTAUR:
+                dropChance = 0.25; // 25% chance - medium
+                break;
             case MINI_BOSS:
-                dropChance = 0.40; // 40% chance - high (mini boss is rare)
+                dropChance = 0.75; // 75% chance - high (mini boss is rare and valuable)
                 break;
         }
 
-        // Roll for drop
+        // Drop visual sword items on ground (high chance)
         if (rand.nextDouble() < dropChance) {
-            // Determine which powerup to drop
-            String drop = selectPowerupDrop(rand);
-            
             try {
-                // Use reflection to call addItem method on InventoryUI
-                inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, drop, 1);
-                System.out.println("Enemy (" + type + ") dropped: " + drop);
+                objectManager.getClass().getMethod("addDrop", int.class, int.class).invoke(objectManager, (int) x, (int) y);
+                System.out.println("Enemy dropped: Sword item at (" + x + "," + y + ")");
             } catch (Exception e) {
-                System.err.println("Failed to add item to inventory: " + e.getMessage());
+                System.err.println("Failed to drop sword item: " + e.getMessage());
+            }
+        }
+
+        // Additionally drop potions directly to inventory (lower chance for visibility)
+        double potionDropChance = dropChance * 0.3; // 30% of base drop chance
+        if (rand.nextDouble() < potionDropChance && inventory != null) {
+            String drop = selectPowerupDrop(rand);
+            try {
+                inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, drop, 1);
+                System.out.println("Enemy dropped: " + drop + " (directly to inventory)");
+            } catch (Exception e) {
+                System.err.println("Failed to drop potion: " + e.getMessage());
             }
         }
     }
@@ -518,7 +525,7 @@ public class Enemy {
         // potion_red (HP restore) - 60% chance
         // potion_blue (Mana restore) - 40% chance
         int roll = rand.nextInt(100);
-        
+
         if (roll < 60) {
             return "potion_red";  // HP potion
         } else {

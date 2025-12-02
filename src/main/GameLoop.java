@@ -12,7 +12,7 @@ import entities.Player;
 import entities.SlashAttack;
 import entities.SkillWAttack;
 import entities.InventoryUI;
-import entities.Hotbar;
+import entities.Hotbar;d
 import entities.NPC;
 import entities.DialogueUI;
 

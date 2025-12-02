@@ -48,13 +48,20 @@ public class Enemy {
     private int attackFrameDelay = 4; // lower = faster attack animation
     private int attackFrameTimer = 0;
 
+    //FOR DEATH ANIMATION
+    private BufferedImage[] deathFrames;
+    private int deathFrame = 0;
+    private int deathFrameDelay = 8; // Slower death animation
+    private int deathFrameTimer = 0;
+    private boolean dying = false; // Flag for death animation state
+
     // Freeze effect
     private int freezeTimer = 0; // in frames, 0 = not frozen
 
     // Collision detection
     private Object tileManager; // Reference to TileManager for collision
-    private final int collisionWidth = 64;  // Larger collision box to properly detect trees
-    private final int collisionHeight = 64;
+    private final int collisionWidth = 48;  // Collision box matching player size
+    private final int collisionHeight = 48;
 
     private void loadSprites() {
         try {
@@ -85,6 +92,16 @@ public class Enemy {
             for (int i = 0; i < 4; i++) {
                 attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
             }
+
+            // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
+            BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
+            int deathFrameWidth = 128; // 512 / 4
+            int deathFrameHeight = 128;
+            deathFrames = new BufferedImage[4];
+            for (int i = 0; i < 4; i++) {
+                deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
+            }
+
             sprite = idleFrames[0]; // default image
         } catch (IOException e) {
             e.printStackTrace();
@@ -104,6 +121,28 @@ public class Enemy {
 
     public void update(int playerX, int playerY, Player player, int cameraX, int cameraY, int viewportWidth, int viewportHeight) {
         if (!alive) return;
+
+        // Handle death animation
+        if (dying) {
+            deathFrameTimer++;
+            if (deathFrameTimer >= deathFrameDelay) {
+                deathFrame++;
+                deathFrameTimer = 0;
+
+                // End death animation and mark as truly dead after showing all frames
+                if (deathFrame >= deathFrames.length) {
+                    alive = false; // Now the enemy is truly dead
+                    dying = false; // Also set dying to false so it stops being drawn
+                    return;
+                }
+            }
+
+            // Only set sprite if we have a valid frame
+            if (deathFrame < deathFrames.length) {
+                sprite = deathFrames[deathFrame];
+            }
+            return; // Skip all other logic while dying
+        }
 
         // Handle freeze effect
         if (freezeTimer > 0) {
@@ -233,22 +272,25 @@ public class Enemy {
 
 
     public void draw(Graphics g, int screenX, int screenY, Player player) {
-        if (!alive) return;
+        if (!alive && !dying) return; // Don't draw if truly dead
 
         int drawX = screenX;
         int drawY = screenY;
-        
-        if (facingLeft) {
+
+        if (facingLeft && !dying) {
             g.drawImage(sprite, drawX + width, drawY, -width, height, null);  // flip horizontally
         } else {
             g.drawImage(sprite, drawX, drawY, width, height, null);
         }
 
-        // HP bar (using 400 as max HP) - drawn at original position
-        g.setColor(Color.WHITE);
-        g.fillRect(screenX, screenY - 10, width, 5);
-        g.setColor(Color.GREEN);
-        g.fillRect(screenX, screenY - 10, (int) (width * (hp / 400.0)), 5);
+        // Only draw HP bar if not dying
+        if (!dying && hp > 0) {
+            // HP bar (using 400 as max HP) - drawn at original position
+            g.setColor(Color.WHITE);
+            g.fillRect(screenX, screenY - 10, width, 5);
+            g.setColor(Color.GREEN);
+            g.fillRect(screenX, screenY - 10, (int) (width * (hp / 400.0)), 5);
+        }
     }
  
     public Rectangle getBounds() {
@@ -258,12 +300,17 @@ public class Enemy {
     public void takeDamage(int amount) {
         hp -= amount;
         flashRed = 5; // for hit flash effect (optional)
-        if (hp <= 0) {
-            alive = false;
+        if (hp <= 0 && !dying) {
+            // Start death animation instead of immediately dying
+            hp = 0;
+            dying = true;
+            deathFrame = 0;
+            deathFrameTimer = 0;
             System.out.println("Enemy defeated!");
         }
-        System.out.println("Enemy HP: " + hp);
-
+        if (hp > 0) {
+            System.out.println("Enemy HP: " + hp);
+        }
     }
 
     public void freeze(int frames) {
@@ -293,26 +340,58 @@ public class Enemy {
 
     // Apply collision-aware movement similar to player
     private void applyCollisionMovement(double moveX, double moveY) {
-        if (tileManager != null) {
-            // Try horizontal movement first
-            double proposedX = x + moveX;
-            int topLeftX = (int) Math.round(proposedX - collisionWidth / 2.0);
-            int topLeftY = (int) Math.round(y - collisionHeight / 2.0);
-            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
-                x = proposedX;
-            }
-
-            // Try vertical movement
-            double proposedY = y + moveY;
-            topLeftX = (int) Math.round(x - collisionWidth / 2.0);
-            topLeftY = (int) Math.round(proposedY - collisionHeight / 2.0);
-            if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
-                y = proposedY;
-            }
-        } else {
+        if (tileManager == null) {
             // No collision detection available, move freely
             x += moveX;
             y += moveY;
+            return;
         }
+
+        // Store original position
+        double originalX = x;
+        double originalY = y;
+
+        // Try to move in both directions together first (diagonal movement)
+        double newX = x + moveX;
+        double newY = y + moveY;
+
+        int topLeftX = (int) Math.round(newX - collisionWidth / 2.0);
+        int topLeftY = (int) Math.round(newY - collisionHeight / 2.0);
+
+        if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+            // Full movement is possible
+            x = newX;
+            y = newY;
+            return;
+        }
+
+        // If diagonal movement fails, try horizontal movement only
+        newX = x + moveX;
+        newY = y; // Keep Y the same
+
+        topLeftX = (int) Math.round(newX - collisionWidth / 2.0);
+        topLeftY = (int) Math.round(y - collisionHeight / 2.0);
+
+        if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+            x = newX;
+            // y stays the same
+            return;
+        }
+
+        // If horizontal fails, try vertical movement only
+        newX = x; // Keep X the same
+        newY = y + moveY;
+
+        topLeftX = (int) Math.round(x - collisionWidth / 2.0);
+        topLeftY = (int) Math.round(newY - collisionHeight / 2.0);
+
+        if (((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+            // x stays the same
+            y = newY;
+            return;
+        }
+
+        // If all movement attempts fail, enemy stays in place
+        // This prevents enemies from getting stuck in trees or other obstacles
     }
 }

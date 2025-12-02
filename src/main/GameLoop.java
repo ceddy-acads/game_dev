@@ -116,6 +116,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         npcs = new ArrayList<>();
         npcs.add(new NPC(356, 224)); // Place old man at row 13, column 22
         npcs.get(0).setTileManager(tileM); // Pass TileManager reference for collision
+        npcs.get(0).setPlayer(player); // Pass player reference for conversation tracking
         player.setNPCs(npcs); // Pass NPCs reference to player for collision detection
         player.setDialogueUI(dialogueUI); // Pass DialogueUI reference to player
         dialogueUI.setKeyHandler(keyH); // Pass KeyHandler reference to DialogueUI

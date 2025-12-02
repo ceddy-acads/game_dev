@@ -30,6 +30,13 @@ public class NPC {
     private int loopIndex = 0;
     private String name = "Yorme";
 
+    // Mission indicator animation
+    private BufferedImage[] missionFrames;
+    private int missionFrameIndex = 0;
+    private int missionFrameDelay = 15; // Animation speed
+    private int missionFrameTimer = 0;
+    private Object player; // Reference to player for conversation tracking
+
     private void loadSprites() {
         try {
             // Load down frames
@@ -53,6 +60,17 @@ public class NPC {
             rightFrames[1] = ImageIO.read(getClass().getResourceAsStream("/assets/characters/NPC/oldman_right_2.png"));
 
             sprite = downFrames[0]; // default image
+
+            // Load mission indicator frames (128x32, 4 frames in a single row)
+            BufferedImage missionSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/ui/mission_check.png"));
+            if (missionSpriteSheet != null) {
+                missionFrames = new BufferedImage[4];
+                int frameWidth = 32; // 128 / 4 = 32
+                int frameHeight = 32;
+                for (int i = 0; i < 4; i++) {
+                    missionFrames[i] = missionSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -70,6 +88,25 @@ public class NPC {
         this.tileM = tileM;
     }
 
+    // Set player reference for conversation tracking
+    public void setPlayer(Object player) {
+        this.player = player;
+    }
+
+    // Check if mission indicator should be shown
+    private boolean shouldShowMissionIndicator() {
+        if (player == null) return false;
+
+        try {
+            // Use reflection to check if conversations are completed
+            return !(Boolean) player.getClass().getMethod("hasCompletedAllConversationsWith", String.class)
+                    .invoke(player, name);
+        } catch (Exception e) {
+            // If reflection fails, default to showing indicator
+            return true;
+        }
+    }
+
     public void update() {
         // Handle walking logic
         walkTimer++;
@@ -84,19 +121,63 @@ public class NPC {
         }
 
         if (isWalking) {
-            // Calculate new position
+            // Calculate proposed new position
+            double proposedX = x;
+            double proposedY = y;
             switch (direction) {
-                case "up": y -= speed; break;
-                case "down": y += speed; break;
-                case "left": x -= speed; break;
-                case "right": x += speed; break;
+                case "up": proposedY -= speed; break;
+                case "down": proposedY += speed; break;
+                case "left": proposedX -= speed; break;
+                case "right": proposedX += speed; break;
             }
 
-            // Simple animation update
-            frameTimer++;
-            if (frameTimer >= frameDelay) {
-                currentFrame = (currentFrame + 1) % 2; // only 2 frames
-                frameTimer = 0;
+            // Check collision with player before moving
+            Rectangle proposedBounds = new Rectangle((int) proposedX, (int) proposedY, width, height);
+            boolean canMove = true;
+
+            // Check tile collision
+            if (tileM != null) {
+                int checkX = (int) proposedX;
+                int checkY = (int) proposedY;
+                if (!tileM.isWalkable(checkX, checkY, width, height)) {
+                    // Tile collision detected, can't move
+                    canMove = false;
+                }
+            }
+
+            // Check player collision (if player reference exists)
+            if (player != null && canMove) {
+                try {
+                    // Get player position using reflection
+                    int playerX = (Integer) player.getClass().getMethod("getX").invoke(player);
+                    int playerY = (Integer) player.getClass().getMethod("getY").invoke(player);
+
+                    // Create player collision bounds (48x48 centered on player)
+                    Rectangle playerBounds = new Rectangle(playerX - 24, playerY - 24, 48, 48);
+
+                    if (proposedBounds.intersects(playerBounds)) {
+                        canMove = false;
+                    }
+                } catch (Exception e) {
+                    // If reflection fails, allow movement
+                }
+            }
+
+            // Apply movement if no collision
+            if (canMove) {
+                x = proposedX;
+                y = proposedY;
+
+                // Animation update
+                frameTimer++;
+                if (frameTimer >= frameDelay) {
+                    currentFrame = (currentFrame + 1) % 2; // only 2 frames
+                    frameTimer = 0;
+                }
+            } else {
+                // Collision detected, stop walking and reset timer
+                isWalking = false;
+                walkTimer = 0;
             }
         } else {
             // Idle animation (slower)
@@ -108,6 +189,15 @@ public class NPC {
         }
 
         updateSprite();
+
+        // Update mission indicator animation
+        if (shouldShowMissionIndicator() && missionFrames != null && missionFrames.length > 0) {
+            missionFrameTimer++;
+            if (missionFrameTimer >= missionFrameDelay) {
+                missionFrameIndex = (missionFrameIndex + 1) % missionFrames.length;
+                missionFrameTimer = 0;
+            }
+        }
     }
 
     private void updateSprite() {
@@ -130,6 +220,13 @@ public class NPC {
     public void draw(Graphics g, int screenX, int screenY) {
         // Draw the sprite
         g.drawImage(sprite, screenX, screenY, width, height, null);
+
+        // Draw mission indicator above the NPC if available
+        if (shouldShowMissionIndicator() && missionFrames != null && missionFrameIndex < missionFrames.length) {
+            int indicatorX = screenX + (width - 32) / 2; // Center the 32x32 indicator
+            int indicatorY = screenY - 60; // Position above the NPC
+            g.drawImage(missionFrames[missionFrameIndex], indicatorX, indicatorY, 32, 32, null);
+        }
 
         // Draw name above the NPC
         g.setColor(Color.WHITE);

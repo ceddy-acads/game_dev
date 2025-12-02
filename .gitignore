@@ -4,3 +4,4 @@ bin/
 *.log
 hs_err_*.log
 compilation_errors.txt
+ 

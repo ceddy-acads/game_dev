@@ -794,8 +794,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private void onDialogueFinished() {
         waitingForDialogue = false;
         if (currentWave >= 5 && miniBossSpawned) {
-            // Game completed - could trigger victory screen
+            // Game completed
             System.out.println("Congratulations! All waves completed!");
+            gameThread = null; // Stop the game loop
         }
     }
 

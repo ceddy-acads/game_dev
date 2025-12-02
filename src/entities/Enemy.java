@@ -172,7 +172,7 @@ public class Enemy {
         isAnimatedGif = true;
 
         // FOR WALKING - Using nightborne_run.gif
-        Image nightborneRun = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/assets/characters/enemies/nightborne_run.gif"));
+        Image nightborneRun = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/assets/characters/enemies/mini-boss/nightborne_run.gif"));
         walkFrames = new Image[1];
         walkFrames[0] = nightborneRun;
 

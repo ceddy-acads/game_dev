@@ -46,6 +46,7 @@ public class Main {
         });
         window.pack();
         window.setLocationRelativeTo(null);
+
         window.setVisible(true);
 
         cardLayout.show(mainPanel, "LANDING");

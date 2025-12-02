@@ -20,8 +20,8 @@ import tile.TileManager;
 
 public class GameLoop extends JLayeredPane implements Runnable {
 
-    private int WIDTH = 800;
-    private int HEIGHT = 600;
+    int width = 800;
+    int height = 600;
     final int TILE_SIZE = 48; // Consistent tile size
 
     private boolean inventoryOpen = false; // To track inventory state
@@ -45,7 +45,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
     public GameLoop(GameOverCallback gameOverCallback) { // Modified constructor
         this.gameOverCallback = gameOverCallback;
 
-        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        this.setPreferredSize(new Dimension(width, height));
         this.setBackground(Color.BLACK); // Set background to black to remove white
         this.setDoubleBuffered(true);
 
@@ -75,11 +75,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
         tileM = new TileManager(this);
 
         // Initialize player with KeyHandler (start in walkable grass area)
-        player = new Player(336, 336, keyH); // Position (336,336) = center of open grass area away from obstacles
+        player = new Player(400, 400, keyH); // Position (400,400) = center of open grass area away from obstacles
         player.setTileManager(tileM); // Pass TileManager reference for collision
 
         // Initialize inventory with callback for item usage
-        gameInventory = new InventoryUI(WIDTH, HEIGHT, itemId -> {
+        gameInventory = new InventoryUI(this.width, this.height, itemId -> {
             if ("potion_blue".equals(itemId)) {
                 // Mana potion: restore 50 mana
                 int oldMana = player.getMana();
@@ -90,15 +90,15 @@ public class GameLoop extends JLayeredPane implements Runnable {
         });
 
         // Initialize dialogue UI
-        dialogueUI = new DialogueUI(WIDTH, HEIGHT);
-        dialogueUI.setBounds(0, 0, WIDTH, HEIGHT);
+        dialogueUI = new DialogueUI(this.width, this.height);
+        dialogueUI.setBounds(0, 0, this.width, this.height);
         dialogueUI.setVisible(false);
         this.add(dialogueUI, JLayeredPane.MODAL_LAYER);
 
         // Initialize hotbar
-        hotbar = new Hotbar(WIDTH, HEIGHT, gameInventory);
+        hotbar = new Hotbar(this.width, this.height, gameInventory);
         hotbar.setPlayer(player); // Set player reference for cooldown access
-        gameInventory.setBounds(0, 0, WIDTH, HEIGHT);
+        gameInventory.setBounds(0, 0, this.width, this.height);
         gameInventory.setVisible(false);
         this.add(gameInventory, JLayeredPane.PALETTE_LAYER);
 
@@ -123,6 +123,32 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Load skill icons
         loadSkillIcons();
+
+        // Add component listener for resize
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int newW = getWidth();
+                int newH = getHeight();
+                if (newW != width || newH != height) {
+                    setSize(newW, newH);
+                }
+            }
+        });
+    }
+
+    public void setSize(int w, int h) {
+        this.width = w;
+        this.height = h;
+        setPreferredSize(new Dimension(w, h));
+        gameInventory.setPreferredSize(new Dimension(w, h));
+        hotbar.updateSize(w, h);
+        dialogueUI.setPreferredSize(new Dimension(w, h));
+        dialogueUI.setBounds(0, 0, w, h);
+    }
+
+    public Hotbar getHotbar() {
+        return hotbar;
     }
 
     public void start() {
@@ -131,7 +157,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
     public void reset() {
         // Reset player state
-        player = new Player(336, 336, keyH); // Re-initialize player at open grass area, full HP
+        player = new Player(400, 400, keyH); // Re-initialize player at open grass area, full HP
         player.setTileManager(tileM); // Re-set TileManager reference
 
         // Reset inventory (if necessary, clear items or reset state)
@@ -149,21 +175,21 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
     // Update window size for responsive layout
     public void updateWindowSize(int newWidth, int newHeight) {
-        this.WIDTH = newWidth;
-        this.HEIGHT = newHeight;
+        this.width = newWidth;
+        this.height = newHeight;
 
         // Update preferred size
-        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        this.setPreferredSize(new Dimension(width, height));
 
         // Update UI components that depend on window size
         if (gameInventory != null) {
-            gameInventory.updateSize(WIDTH, HEIGHT);
+            gameInventory.updateSize(width, height);
         }
         if (hotbar != null) {
-            hotbar.updateSize(WIDTH, HEIGHT);
+            hotbar.updateSize(width, height);
         }
         if (dialogueUI != null) {
-            dialogueUI.updateSize(WIDTH, HEIGHT);
+            dialogueUI.updateSize(width, height);
         }
 
         // Force revalidation and repaint
@@ -193,8 +219,6 @@ public class GameLoop extends JLayeredPane implements Runnable {
             this.requestFocusInWindow(); // Return focus to game loop
         }
     }
-
-
 
     @Override
     public void addNotify() {
@@ -235,13 +259,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
         float deltaTime = 1.0f / 60.0f;
 
         // Calculate camera position for enemy AI
-        int cameraX = (int) player.px - WIDTH / 2;
-        int cameraY = (int) player.py - HEIGHT / 2;
+        int cameraX = (int) player.px - this.width / 2;
+        int cameraY = (int) player.py - this.height / 2;
         // Clamp camera to map bounds
         int mapPixelWidth = tileM.getMapWidth() * TILE_SIZE;
         int mapPixelHeight = tileM.getMapHeight() * TILE_SIZE;
-        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - WIDTH));
-        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - HEIGHT));
+        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - this.width));
+        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - this.height));
 
         // Update player
         player.update(deltaTime);
@@ -249,7 +273,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Update enemies - pass camera viewport info for AI
         for (Enemy enemy : enemies) {
-            enemy.update(player.getX(), player.getY(), player, cameraX, cameraY, WIDTH, HEIGHT);
+            enemy.update(player.getX(), player.getY(), player, cameraX, cameraY, this.width, this.height);
         }
 
         // Update NPCs
@@ -308,7 +332,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         if (!player.isAlive() && player.isDeathAnimationFinished()) {
             gameThread = null; // Stop the game loop
             // Capture the current screen as a BufferedImage
-            BufferedImage screenshot = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage screenshot = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = screenshot.createGraphics();
             paintComponent(g2d); // Render the current game state to the screenshot
             g2d.dispose();
@@ -327,24 +351,18 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // If inventory is a JInternalFrame, it will manage its own painting over the background.
         // For a simple JPanel, we draw the game world first.
 
-
-        // More aggressive zoom for large windossssssws
-        float zoomFactor = (WIDTH > 1400 || HEIGHT > 900) ? 0.7f : 1.2f;
-        int viewportWidth = (int) (WIDTH * zoomFactor);
-        int viewportHeight = (int) (HEIGHT * zoomFactor);
-
-        // Calculate camera position to center on the player with zoom
-        int cameraX = (int) player.px - viewportWidth / 2;
-        int cameraY = (int) player.py - viewportHeight / 2;
+        // Calculate camera position to center on the player
+        int cameraX = (int) player.px - this.width / 2; // Use player.px
+        int cameraY = (int) player.py - this.height / 2; // Use player.py
 
         // Clamp camera to map bounds to prevent white background
         int mapPixelWidth = tileM.getMapWidth() * TILE_SIZE;
         int mapPixelHeight = tileM.getMapHeight() * TILE_SIZE;
-        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - viewportWidth));
-        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - viewportHeight));
+        cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - this.width));
+        cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - this.height));
 
         // Draw tiles using TileManager with camera offset
-        tileM.draw(g2d, cameraX, cameraY, WIDTH, HEIGHT);
+        tileM.draw(g2d, cameraX, cameraY, this.width, this.height);
 
         // Adjust player's draw position based on camera
         int playerScreenX = (int) player.px - cameraX; // Use player.px
@@ -392,13 +410,14 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private void drawHotbarKeys(Graphics2D g2d) {
         int slotSize = 48;
         int numSlots = 3; // Reduced from 5 to 3 skill slots
-        int hotbarWidth = numSlots * slotSize;
-        int hotbarX = (WIDTH - hotbarWidth) / 2; // Centers the 3 slots horizontally
-        int hotbarY = HEIGHT - slotSize - 10;
+        int spacing = 10; // Spacing between slots
+        int hotbarWidth = numSlots * slotSize + (numSlots - 1) * spacing;
+        int hotbarX = (this.width - hotbarWidth) / 2; // Centers the slots horizontally
+        int hotbarY = this.height - slotSize - 10;
 
         // Draw skill icons and cooldown overlays
         for (int i = 0; i < numSlots; i++) {
-            int slotX = hotbarX + i * slotSize;
+            int slotX = hotbarX + i * (slotSize + spacing);
             int slotY = hotbarY;
 
             boolean onCooldown = false;
@@ -448,8 +467,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
     private void drawFireIcon(Graphics2D g2d, int x, int y, int size) {
         if (skillFireSplashIcon != null) {
-            // Draw the 32x32 image centered in the 48x48 slot
-            g2d.drawImage(skillFireSplashIcon, x + 8, y + 8, 32, 32, null);
+            // Draw the image scaled to fill the slot
+            g2d.drawImage(skillFireSplashIcon, x, y, size, size, null);
         } else {
             // Fallback: Draw a simple red flame/triangle
             int[] xPoints = {x + size/2, x + size/4, x + 3*size/4};
@@ -465,8 +484,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
     private void drawIceIcon(Graphics2D g2d, int x, int y, int size) {
         if (skillIcePiercerIcon != null) {
-            // Draw the 32x32 image centered in the 48x48 slot
-            g2d.drawImage(skillIcePiercerIcon, x + 8, y + 8, 32, 32, null);
+            // Draw the image scaled to fill the slot
+            g2d.drawImage(skillIcePiercerIcon, x, y, size, size, null);
         } else {
             // Fallback: Draw a simple blue snowflake/diamond
             int centerX = x + size/2;
@@ -488,8 +507,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
     private void drawLightningIcon(Graphics2D g2d, int x, int y, int size) {
         if (skillLightningStormIcon != null) {
-            // Draw the 32x32 image centered in the 48x48 slot
-            g2d.drawImage(skillLightningStormIcon, x + 8, y + 8, 32, 32, null);
+            // Draw the image scaled to fill the slot
+            g2d.drawImage(skillLightningStormIcon, x, y, size, size, null);
         } else {
             // Fallback: Draw a simple yellow lightning bolt
             g2d.setColor(Color.YELLOW);
@@ -506,15 +525,15 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private void drawBackgroundBlur(Graphics2D g2d) {
         // Draw a semi-transparent dark overlay over the entire screen to create blur effect
         g2d.setColor(new Color(0, 0, 0, 120)); // Semi-transparent black overlay
-        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+        g2d.fillRect(0, 0, this.width, this.height);
     }
 
     private void drawDialogue(Graphics2D g2d, String text) {
         // Draw dialogue box at the bottom of the screen
-        int boxWidth = WIDTH - 40;
+        int boxWidth = this.width - 40;
         int boxHeight = 80;
         int boxX = 20;
-        int boxY = HEIGHT - boxHeight - 20;
+        int boxY = this.height - boxHeight - 20;
 
         // Semi-transparent background
         g2d.setColor(new Color(0, 0, 0, 200));

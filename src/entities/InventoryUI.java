@@ -493,6 +493,15 @@ public class InventoryUI extends JPanel { // Changed from JFrame
         return inventorySlots;
     }
 
+    // Public method to add items to inventory (for powerups, etc.)
+    public void addItem(String itemId, int amount) {
+        Item item = cloneItem(itemId);
+        if (item != null) {
+            addItemToInventory(item, amount);
+            refreshGrid();
+        }
+    }
+
     // Update size for responsive layout
     public void updateSize(int newWidth, int newHeight) {
         setPreferredSize(new Dimension(newWidth, newHeight));

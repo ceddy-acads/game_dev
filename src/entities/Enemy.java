@@ -8,7 +8,13 @@ import java.io.IOException;
 
 
 public class Enemy {
-    
+
+    public enum EnemyType {
+        BASIC, FAST, TANK, MINI_BOSS
+    }
+
+    private EnemyType type;
+
     //FOR DAMAGE
     private int attackDamage = 10;
     
@@ -45,7 +51,7 @@ public class Enemy {
     private int attackDelay = 4; // lower = faster animation
     private boolean attacking = false;
     private int attackCooldown = 0; // prevents constant attacking
-    private int attackFrameDelay = 4; // lower = faster attack animation
+    private int attackFrameDelay = 2; // lower = faster attack animation (reduced from 4 to 2)
     private int attackFrameTimer = 0;
 
     //FOR DEATH ANIMATION
@@ -60,6 +66,7 @@ public class Enemy {
 
     // Collision detection
     private Object tileManager; // Reference to TileManager for collision
+    private Object inventory; // Reference to InventoryUI for powerup drops
     private final int collisionWidth = 48;  // Collision box matching player size
     private final int collisionHeight = 48;
 
@@ -107,13 +114,36 @@ public class Enemy {
             e.printStackTrace();
         }
     }
-    public Enemy(int x, int y) {
+    public Enemy(int x, int y, EnemyType type) {
         this.x = (double) x;
         this.y = (double) y;
+        this.type = type;
         this.width = 128; // Set to frame width
         this.height = 128; // Set to frame height
-        this.hp = 400;
-        this.speed = 0.8; // Further reduced speed
+
+        // Set stats based on enemy type
+        switch (type) {
+            case BASIC:
+                this.hp = 400;
+                this.speed = 0.8;
+                this.attackDamage = 20; // Increased from 10 to 20
+                break;
+            case FAST:
+                this.hp = 300;
+                this.speed = 1.2;
+                this.attackDamage = 16; // Increased from 8 to 16
+                break;
+            case TANK:
+                this.hp = 600;
+                this.speed = 0.5;
+                this.attackDamage = 30; // Increased from 15 to 30
+                break;
+            case MINI_BOSS:
+                this.hp = 1500;
+                this.speed = 0.7;
+                this.attackDamage = 50; // Increased from 25 to 50
+                break;
+        }
 
         loadSprites();
     }
@@ -228,7 +258,7 @@ public class Enemy {
             if (!attacking && attackCooldown <= 0) {
                 attacking = true;
                 attackFrame = 0;
-                attackCooldown = 90;
+                attackCooldown = 45; // Reduced from 90 to 45 (attack twice as fast)
                 System.out.println("Enemy Attacking!");
                 // Randomize enemy attack damage with a minimum of 5
                 Random rand = new Random();
@@ -306,10 +336,41 @@ public class Enemy {
             dying = true;
             deathFrame = 0;
             deathFrameTimer = 0;
+
+            // Drop powerups with low probability
+            dropPowerup();
+
             System.out.println("Enemy defeated!");
         }
         if (hp > 0) {
             System.out.println("Enemy HP: " + hp);
+        }
+    }
+
+    private void dropPowerup() {
+        if (inventory == null) return;
+
+        Random rand = new Random();
+        // Low probability: 10% chance for basic enemies, 20% for others, 50% for mini boss
+        double dropChance = 0.1;
+        if (type == EnemyType.FAST || type == EnemyType.TANK) {
+            dropChance = 0.2;
+        } else if (type == EnemyType.MINI_BOSS) {
+            dropChance = 0.5;
+        }
+
+        if (rand.nextDouble() < dropChance) {
+            // Drop a random powerup
+            String[] possibleDrops = {"potion_red", "potion_blue"};
+            String drop = possibleDrops[rand.nextInt(possibleDrops.length)];
+
+            try {
+                // Use reflection to call addItem method on InventoryUI
+                inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, drop, 1);
+                System.out.println("Enemy dropped: " + drop);
+            } catch (Exception e) {
+                System.err.println("Failed to add item to inventory: " + e.getMessage());
+            }
         }
     }
 
@@ -336,6 +397,11 @@ public class Enemy {
     // Set TileManager reference for collision detection
     public void setTileManager(Object tileManager) {
         this.tileManager = tileManager;
+    }
+
+    // Set InventoryUI reference for powerup drops
+    public void setInventory(Object inventory) {
+        this.inventory = inventory;
     }
 
     // Apply collision-aware movement similar to player

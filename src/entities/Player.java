@@ -53,6 +53,7 @@ public class Player {
     private KeyHandler keyH;
     private Object tileManager; // Reference to TileManager for collision
     private java.util.List<NPC> npcs; // Reference to NPCs for collision
+    private Object objectManager; // Reference to ObjectManager for collision
 
     // State constants
     private static final int IDLE = 0;
@@ -436,25 +437,25 @@ public class Player {
         }
 
         // --- B Attack: cooldown-limited, mana cost, one press = one attack ---
-        if (keyH.skillB && bCooldown == 0 && mana >= 15) {
+        if (keyH.skillB && bCooldown == 0 && mana >= 30) {
             useSkillB();
-            mana -= 15;
+            mana -= 30;
             bCooldown = B_COOLDOWN_MAX;
             keyH.skillB = false; // Reset to prevent continuous skill use
         }
 
         // --- N Attack: cooldown-limited, mana cost, one press = one attack ---
-        if (keyH.skillN && nCooldown == 0 && mana >= 20) {
+        if (keyH.skillN && nCooldown == 0 && mana >= 45) {
             useSkillN();
-            mana -= 20;
+            mana -= 45;
             nCooldown = N_COOLDOWN_MAX;
             keyH.skillN = false; // Reset to prevent continuous skill use
         }
 
         // --- M Attack: cooldown-limited, mana cost, one press = one attack ---
-        if (keyH.skillM && mCooldown == 0 && mana >= 50) {
+        if (keyH.skillM && mCooldown == 0 && mana >= 80) {
             useSkillM();
-            mana -= 50;
+            mana -= 80;
             mCooldown = M_COOLDOWN_MAX;
             keyH.skillM = false; // Reset to prevent continuous skill use
         }
@@ -496,21 +497,44 @@ public class Player {
             collisionWidth, collisionHeight);
 
         boolean canMoveX = true;
+
+        // Check map boundaries first (strict boundary collision)
         if (tileManager != null) {
-            int topLeftX = (int) Math.round(proposedX - collisionWidth / 2.0);
-            int topLeftY = (int) Math.round(py - collisionHeight / 2.0);
-            if (!((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+            int mapWidth = ((tile.TileManager) tileManager).getMapWidth() * ((tile.TileManager) tileManager).getTileSize();
+            int leftBound = (int) Math.round(proposedX - collisionWidth / 2.0);
+            int rightBound = (int) Math.round(proposedX + collisionWidth / 2.0);
+            if (leftBound < 0 || rightBound >= mapWidth) {
+                canMoveX = false;
+            }
+        }
+
+        // Check tile collision (solid tiles block movement)
+        if (canMoveX && tileManager != null) {
+            if (!((tile.TileManager) tileManager).isWalkable(
+                (int) Math.round(proposedX - collisionWidth / 2.0),
+                (int) Math.round(py - collisionHeight / 2.0),
+                collisionWidth, collisionHeight)) {
                 canMoveX = false;
             }
         }
 
         // Check NPC collision for horizontal movement
-        if (npcs != null) {
+        if (canMoveX && npcs != null) {
             for (NPC npc : npcs) {
                 if (proposedXBounds.intersects(npc.getBounds())) {
                     canMoveX = false;
                     break;
                 }
+            }
+        }
+
+        // Check object collision for horizontal movement
+        if (canMoveX && objectManager != null) {
+            if (((world.ObjectManager) objectManager).isObjectCollision(
+                (int) Math.round(proposedX - collisionWidth / 2.0),
+                (int) Math.round(py - collisionHeight / 2.0),
+                collisionWidth, collisionHeight)) {
+                canMoveX = false;
             }
         }
 
@@ -527,21 +551,44 @@ public class Player {
             collisionWidth, collisionHeight);
 
         boolean canMoveY = true;
+
+        // Check map boundaries first (strict boundary collision)
         if (tileManager != null) {
-            int topLeftX = (int) Math.round(px - collisionWidth / 2.0);
-            int topLeftY = (int) Math.round(proposedY - collisionHeight / 2.0);
-            if (!((tile.TileManager) tileManager).isWalkable(topLeftX, topLeftY, collisionWidth, collisionHeight)) {
+            int mapHeight = ((tile.TileManager) tileManager).getMapHeight() * ((tile.TileManager) tileManager).getTileSize();
+            int topBound = (int) Math.round(proposedY - collisionHeight / 2.0);
+            int bottomBound = (int) Math.round(proposedY + collisionHeight / 2.0);
+            if (topBound < 0 || bottomBound >= mapHeight) {
+                canMoveY = false;
+            }
+        }
+
+        // Check tile collision (solid tiles block movement)
+        if (canMoveY && tileManager != null) {
+            if (!((tile.TileManager) tileManager).isWalkable(
+                (int) Math.round(px - collisionWidth / 2.0),
+                (int) Math.round(proposedY - collisionHeight / 2.0),
+                collisionWidth, collisionHeight)) {
                 canMoveY = false;
             }
         }
 
         // Check NPC collision for vertical movement
-        if (npcs != null) {
+        if (canMoveY && npcs != null) {
             for (NPC npc : npcs) {
                 if (proposedYBounds.intersects(npc.getBounds())) {
                     canMoveY = false;
                     break;
                 }
+            }
+        }
+
+        // Check object collision for vertical movement
+        if (canMoveY && objectManager != null) {
+            if (((world.ObjectManager) objectManager).isObjectCollision(
+                (int) Math.round(px - collisionWidth / 2.0),
+                (int) Math.round(proposedY - collisionHeight / 2.0),
+                collisionWidth, collisionHeight)) {
+                canMoveY = false;
             }
         }
 
@@ -699,7 +746,7 @@ public class Player {
             g2.fillRect(drawX, drawY, 32, 32);
         }
 
-        // Draw name above HP bar
+        // Draw name above player (keeping this for identification)
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 12));
         FontMetrics fm = g.getFontMetrics();
@@ -708,18 +755,6 @@ public class Player {
         int textX = drawX + (width - textWidth) / 2;
         int textY = drawY - 15;
         g.drawString(name, textX, textY);
-
-        // Draw HP bar above player
-        g.setColor(Color.GRAY);
-        g.fillRect(drawX, drawY - 10, width, 5);
-        g.setColor(Color.GREEN);
-        g.fillRect(drawX, drawY - 10, (int) (width * ((double) hp / maxHp)), 5);
-
-        // Draw Mana bar below HP bar
-        g.setColor(Color.GRAY);
-        g.fillRect(drawX, drawY - 5, width, 5);
-        g.setColor(Color.BLUE);
-        g.fillRect(drawX, drawY - 5, (int) (width * ((double) mana / maxMana)), 5);
 
         // Skill animations are drawn by GameLoop, not Player itself.
     }
@@ -805,6 +840,10 @@ public class Player {
     public int getMCooldown() { return mCooldown; }
     public int getMCooldownMax() { return M_COOLDOWN_MAX; }
 
+    // HP getters
+    public int getHp() { return hp; }
+    public int getMaxHp() { return maxHp; }
+
     // Mana getters
     public int getMana() { return mana; }
     public int getMaxMana() { return maxMana; }
@@ -867,6 +906,11 @@ public class Player {
         this.npcs = npcs;
     }
 
+    // Method to set ObjectManager reference for collision detection
+    public void setObjectManager(Object objectManager) {
+        this.objectManager = objectManager;
+    }
+
     // Method to set DialogueUI reference
     public void setDialogueUI(Object dialogueUI) {
         this.dialogueUI = dialogueUI;
@@ -884,12 +928,9 @@ public class Player {
         if (npcs != null) {
             for (NPC npc : npcs) {
                 double distance = Math.sqrt(Math.pow(px - npc.getX(), 2) + Math.pow(py - npc.getY(), 2));
-                if (distance < 60) { // Within 60 pixels
-                    // Check if player is facing the NPC
-                    if (isFacingNPC(npc)) {
-                        startDialogue(npc);
-                        break;
-                    }
+                if (distance < 80) { // Within 80 pixels (increased range for easier interaction)
+                    startDialogue(npc);
+                    break;
                 }
             }
         }

@@ -223,4 +223,12 @@ public class TileManager {
         }
         return true; // All tiles are walkable
     }
+
+    // Method to get tile ID at specific tile coordinates
+    public int getTileId(int tileX, int tileY) {
+        if (tileX >= 0 && tileX < mapWidth && tileY >= 0 && tileY < mapHeight) {
+            return tileMap[tileY][tileX];
+        }
+        return -1; // Invalid position
+    }
 }

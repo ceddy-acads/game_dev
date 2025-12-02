@@ -17,12 +17,13 @@ import entities.NPC;
 import entities.DialogueUI;
 
 import tile.TileManager;
+import world.ObjectManager;
 
 public class GameLoop extends JLayeredPane implements Runnable {
 
     int width = 800;
     int height = 600;
-    final int TILE_SIZE = 48; // Consistent tile size
+    final int TILE_SIZE = 80; // Consistent tile size - matches TileManager
 
     private boolean inventoryOpen = false; // To track inventory state
     private InventoryUI gameInventory; // The inventory panel
@@ -32,10 +33,17 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private KeyHandler keyH;
     private Player player;
     private TileManager tileM; // Tile manager for rendering tiles
+    private ObjectManager objectM; // Object manager for world objects
     private Hotbar hotbar;
     private List<Enemy> enemies;
     private List<NPC> npcs;
     private GameOverCallback gameOverCallback; // Callback for game over
+
+    // Wave system
+    private int currentWave = 0;
+    private boolean waveActive = false;
+    private boolean waitingForDialogue = false;
+    private boolean miniBossSpawned = false;
 
     // Skill icons
     private Image skillIcePiercerIcon;
@@ -74,9 +82,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Initialize TileManager first
         tileM = new TileManager(this);
 
+        // Initialize ObjectManager for world objects
+        objectM = new ObjectManager(tileM);
+
         // Initialize player with KeyHandler (start in walkable grass area)
         player = new Player(400, 400, keyH); // Position (400,400) = center of open grass area away from obstacles
         player.setTileManager(tileM); // Pass TileManager reference for collision
+        player.setObjectManager(objectM); // Pass ObjectManager reference for collision
 
         // Initialize inventory with callback for item usage
         gameInventory = new InventoryUI(this.width, this.height, itemId -> {
@@ -104,12 +116,13 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Initialize enemies below the wall in lower map area
         enemies = new ArrayList<>();
-        enemies.add(new Enemy(600, 800)); // Lower map position 1 - below wall
-        enemies.add(new Enemy(700, 850)); // Lower map position 2 - below wall
+        enemies.add(new Enemy(600, 800, Enemy.EnemyType.BASIC)); // Lower map position 1 - below wall
+        enemies.add(new Enemy(700, 850, Enemy.EnemyType.BASIC)); // Lower map position 2 - below wall
 
-        // Set tile manager for enemies for collision detection
+        // Set tile manager and inventory for enemies for collision detection and powerup drops
         for (Enemy enemy : enemies) {
             enemy.setTileManager(tileM);
+            enemy.setInventory(gameInventory);
         }
 
         // Initialize NPCs
@@ -120,6 +133,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         player.setNPCs(npcs); // Pass NPCs reference to player for collision detection
         player.setDialogueUI(dialogueUI); // Pass DialogueUI reference to player
         dialogueUI.setKeyHandler(keyH); // Pass KeyHandler reference to DialogueUI
+
+        // Set NPCs reference in ObjectManager to prevent objects from spawning near NPCs
+        objectM.setNPCs(npcs);
 
         // Load skill icons
         loadSkillIcons();
@@ -159,6 +175,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Reset player state
         player = new Player(400, 400, keyH); // Re-initialize player at open grass area, full HP
         player.setTileManager(tileM); // Re-set TileManager reference
+        player.setObjectManager(objectM); // Re-set ObjectManager reference
 
         // Reset inventory (if necessary, clear items or reset state)
         gameInventory.reset();
@@ -328,6 +345,24 @@ public class GameLoop extends JLayeredPane implements Runnable {
             player.clearLightningArea();
         }
 
+        // Wave system logic
+        if (!waveActive && !waitingForDialogue && !miniBossSpawned) {
+            // Start next wave
+            startNextWave();
+        }
+
+        // Check if current wave is completed
+        if (waveActive && checkWaveCompleted()) {
+            waveActive = false;
+            waitingForDialogue = true;
+            triggerWaveDialogue();
+        }
+
+        // Check if dialogue has finished
+        if (waitingForDialogue && !dialogueUI.isDialogueVisible()) {
+            onDialogueFinished();
+        }
+
         // Check if player is dead
         if (!player.isAlive() && player.isDeathAnimationFinished()) {
             gameThread = null; // Stop the game loop
@@ -364,6 +399,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Draw tiles using TileManager with camera offset
         tileM.draw(g2d, cameraX, cameraY, this.width, this.height);
 
+        // Draw world objects
+        objectM.draw(g2d, cameraX, cameraY, this.width, this.height);
+
         // Adjust player's draw position based on camera
         int playerScreenX = (int) player.px - cameraX; // Use player.px
         int playerScreenY = (int) player.py - cameraY; // Use player.py
@@ -371,8 +409,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         // Draw player
         player.draw(g, playerScreenX, playerScreenY);
 
-        // Draw enemies
-        for (Enemy enemy : enemies) {
+        // Draw enemies (make a copy to avoid ConcurrentModificationException)
+        List<Enemy> enemiesCopy = new ArrayList<>(enemies);
+        for (Enemy enemy : enemiesCopy) {
             int enemyScreenX = enemy.getX() - cameraX;
             int enemyScreenY = enemy.getY() - cameraY;
             enemy.draw(g, enemyScreenX, enemyScreenY, player);
@@ -399,6 +438,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
             int skillWScreenY = s.y - cameraY;
             s.draw(g, skillWScreenX, skillWScreenY);
         }
+
+        // Draw player status bars at top left
+        drawPlayerStatusBars(g2d);
 
         // Draw hotbar (now shows skill items from inventory)
         hotbar.draw(g2d);
@@ -551,6 +593,58 @@ public class GameLoop extends JLayeredPane implements Runnable {
         g2d.drawString(text, boxX + 10, textY);
     }
 
+    private void drawPlayerStatusBars(Graphics2D g2d) {
+        // Position at top left corner
+        int iconSize = 40; // Slightly larger for better visibility
+        int barWidth = 160; // Slightly wider for better proportion
+        int barHeight = 14; // Slightly taller for rounded look
+        int arcWidth = barHeight; // Full height for pill shape
+        int arcHeight = barHeight;
+        int margin = 10;
+        int startX = margin;
+        int startY = margin;
+
+        // Draw player icon (char_portrait.png)
+        try {
+            Image playerIcon = new ImageIcon(getClass().getResource("/assets/characters/char_portrait.png")).getImage();
+            // Scale the icon to fit the UI properly
+            g2d.drawImage(playerIcon, startX, startY, iconSize, iconSize, null);
+        } catch (Exception e) {
+            // Fallback: draw a simple colored circle
+            g2d.setColor(Color.BLUE);
+            g2d.fillOval(startX, startY, iconSize, iconSize);
+            g2d.setColor(Color.WHITE);
+            g2d.drawOval(startX, startY, iconSize, iconSize);
+        }
+
+        // Position bars to the right of the icon
+        int barsX = startX + iconSize + margin;
+        int hpBarY = startY + 4;
+        int manaBarY = hpBarY + barHeight + 8;
+
+        // Draw HP bar background (rounded, clean design)
+        g2d.setColor(new Color(64, 64, 64, 200)); // Semi-transparent dark gray background
+        g2d.fillRoundRect(barsX, hpBarY, barWidth, barHeight, arcWidth, arcHeight);
+        g2d.setColor(Color.WHITE);
+        g2d.drawRoundRect(barsX, hpBarY, barWidth, barHeight, arcWidth, arcHeight);
+
+        // Draw HP bar fill (rounded, no text)
+        g2d.setColor(Color.GREEN);
+        int hpWidth = Math.max(barHeight, (int) (barWidth * ((double) player.getHp() / player.getMaxHp())));
+        g2d.fillRoundRect(barsX, hpBarY, hpWidth, barHeight, arcWidth, arcHeight);
+
+        // Draw Mana bar background (rounded, clean design)
+        g2d.setColor(new Color(64, 64, 64, 200)); // Semi-transparent dark gray background
+        g2d.fillRoundRect(barsX, manaBarY, barWidth, barHeight, arcWidth, arcHeight);
+        g2d.setColor(Color.WHITE);
+        g2d.drawRoundRect(barsX, manaBarY, barWidth, barHeight, arcWidth, arcHeight);
+
+        // Draw Mana bar fill (rounded, no text)
+        g2d.setColor(Color.BLUE);
+        int manaWidth = Math.max(barHeight, (int) (barWidth * ((double) player.getMana() / player.getMaxMana())));
+        g2d.fillRoundRect(barsX, manaBarY, manaWidth, barHeight, arcWidth, arcHeight);
+    }
+
     private void loadSkillIcons() {
         try {
             skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
@@ -562,6 +656,142 @@ public class GameLoop extends JLayeredPane implements Runnable {
             skillIcePiercerIcon = null;
             skillLightningStormIcon = null;
             skillFireSplashIcon = null;
+        }
+    }
+
+    // Wave system methods
+    private void startNextWave() {
+        currentWave++;
+        waveActive = true;
+        enemies.clear(); // Clear existing enemies
+
+        if (currentWave <= 5) {
+            // Spawn regular wave enemies
+            spawnWaveEnemies(currentWave);
+        } else if (!miniBossSpawned) {
+            // Spawn mini boss after wave 5
+            spawnMiniBoss();
+            miniBossSpawned = true;
+        }
+
+        // Set tile manager and inventory for new enemies
+        for (Enemy enemy : enemies) {
+            enemy.setTileManager(tileM);
+            enemy.setInventory(gameInventory);
+        }
+
+        System.out.println("Wave " + currentWave + " started!");
+    }
+
+    private void spawnWaveEnemies(int waveNumber) {
+        int enemyCount = 3 + (waveNumber - 1) * 2 + 12; // Add 12 enemies: 15, 17, 19, 21, 23 enemies
+        Enemy.EnemyType[] enemyTypes = getEnemyTypesForWave(waveNumber);
+
+        // Spawn enemies at the bottom edge of the map (Y coordinates around 2300-2350)
+        int[][] spawnPositions = {
+            {200, 2300}, {400, 2320}, {600, 2280}, {800, 2350}, {1000, 2310},
+            {1200, 2290}, {1400, 2330}, {1600, 2270}, {1800, 2340}, {2000, 2300},
+            {2200, 2320}, {240, 2280}, {440, 2350}, {640, 2310}, {840, 2290},
+            {1040, 2330}, {1240, 2270}, {1440, 2340}, {1640, 2300}, {1840, 2320},
+            {2040, 2280}, {2240, 2350}, {2440, 2310}, {2640, 2290}, {2840, 2330}
+        };
+
+        for (int i = 0; i < enemyCount && i < spawnPositions.length; i++) {
+            Enemy.EnemyType type = enemyTypes[i % enemyTypes.length];
+            enemies.add(new Enemy(spawnPositions[i][0], spawnPositions[i][1], type));
+        }
+    }
+
+    private Enemy.EnemyType[] getEnemyTypesForWave(int waveNumber) {
+        switch (waveNumber) {
+            case 1:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC};
+            case 2:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST};
+            case 3:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.TANK};
+            case 4:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
+            case 5:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
+            default:
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC};
+        }
+    }
+
+    private void spawnMiniBoss() {
+        enemies.add(new Enemy(700, 800, Enemy.EnemyType.MINI_BOSS));
+        System.out.println("Mini Boss spawned!");
+    }
+
+    private boolean checkWaveCompleted() {
+        // Check if all enemies are dead
+        for (Enemy enemy : enemies) {
+            if (enemy.isAlive()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void triggerWaveDialogue() {
+        List<String> dialogueLines = new ArrayList<>();
+
+        if (currentWave <= 5) {
+            // Dialogue after each regular wave
+            switch (currentWave) {
+                case 1:
+                    dialogueLines.add("Old Man: Well done, young warrior! You've survived the first wave.");
+                    dialogueLines.add("Old Man: But don't get complacent. The creatures grow stronger.");
+                    dialogueLines.add("Old Man: Prepare yourself for what's coming next.");
+                    break;
+                case 2:
+                    dialogueLines.add("Old Man: Impressive! The second wave falls before you.");
+                    dialogueLines.add("Old Man: These beasts are learning from their defeats.");
+                    dialogueLines.add("Old Man: Stay sharp and watch your surroundings.");
+                    break;
+                case 3:
+                    dialogueLines.add("Old Man: You continue to surprise me with your prowess.");
+                    dialogueLines.add("Old Man: The third wave was no match for your skills.");
+                    dialogueLines.add("Old Man: But I sense a greater darkness approaching...");
+                    break;
+                case 4:
+                    dialogueLines.add("Old Man: Four waves down! You're proving to be quite the formidable opponent.");
+                    dialogueLines.add("Old Man: The enemies grow desperate, and with desperation comes danger.");
+                    dialogueLines.add("Old Man: One more wave before the true test begins.");
+                    break;
+                case 5:
+                    dialogueLines.add("Old Man: The fifth wave is vanquished! You've done what few could.");
+                    dialogueLines.add("Old Man: But this was merely a prelude. The real battle awaits.");
+                    dialogueLines.add("Old Man: A fearsome creature approaches. Prepare for the ultimate challenge!");
+                    break;
+            }
+        } else {
+            // Dialogue after mini boss
+            dialogueLines.add("Old Man: Unbelievable! You've defeated the ancient guardian!");
+            dialogueLines.add("Old Man: Such power... such determination. You are truly worthy.");
+            dialogueLines.add("Old Man: The darkness has been pushed back, for now.");
+            dialogueLines.add("Old Man: Rest well, hero. The realm owes you its gratitude.");
+        }
+
+        dialogueUI.startDialogue("Yorme", dialogueLines);
+
+        // Set up dialogue completion callback
+        setupDialogueCallback();
+    }
+
+    private void setupDialogueCallback() {
+        // This method will be called when dialogue ends
+        // For now, we'll check in the update loop if dialogue is finished
+        waitingForDialogue = true;
+    }
+
+    // Method to continue after dialogue (called from update when dialogue ends)
+    private void onDialogueFinished() {
+        waitingForDialogue = false;
+        if (currentWave >= 5 && miniBossSpawned) {
+            // Game completed - could trigger victory screen
+            System.out.println("Congratulations! All waves completed!");
         }
     }
 

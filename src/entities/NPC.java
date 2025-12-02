@@ -21,10 +21,11 @@ public class NPC {
     private String direction = "down"; // default direction
 
     // Movement
-    private double speed = 0.5;
-    private int walkTimer = 0;
-    private int walkDuration = 120; // frames to walk in one direction
-    private boolean isWalking = false;
+    private double speed = 1.0; // Increased speed for more visible movement
+    private int directionChangeTimer = 0;
+    private int directionChangeInterval = 180; // Change direction every 3 seconds at 60 FPS
+    private int collisionCooldown = 0; // Prevent rapid direction changes on collision
+    private int collisionCooldownMax = 60; // 1 second cooldown after collision
     private tile.TileManager tileM;
     private String[] loopDirections = {"right", "down", "left", "up"};
     private int loopIndex = 0;
@@ -108,82 +109,83 @@ public class NPC {
     }
 
     public void update() {
-        // Handle walking logic
-        walkTimer++;
-        if (walkTimer >= walkDuration) {
-            walkTimer = 0;
-            isWalking = !isWalking; // toggle walking/idle
-            if (isWalking) {
+        // Update collision cooldown
+        if (collisionCooldown > 0) {
+            collisionCooldown--;
+        }
+
+        // Handle direction changes (only if not in collision cooldown)
+        if (collisionCooldown == 0) {
+            directionChangeTimer++;
+            if (directionChangeTimer >= directionChangeInterval) {
+                directionChangeTimer = 0;
                 // Choose next direction in loop
                 direction = loopDirections[loopIndex];
                 loopIndex = (loopIndex + 1) % loopDirections.length;
             }
         }
 
-        if (isWalking) {
-            // Calculate proposed new position
-            double proposedX = x;
-            double proposedY = y;
-            switch (direction) {
-                case "up": proposedY -= speed; break;
-                case "down": proposedY += speed; break;
-                case "left": proposedX -= speed; break;
-                case "right": proposedX += speed; break;
+        // Always try to move in current direction (continuous movement)
+        double proposedX = x;
+        double proposedY = y;
+        switch (direction) {
+            case "up": proposedY -= speed; break;
+            case "down": proposedY += speed; break;
+            case "left": proposedX -= speed; break;
+            case "right": proposedX += speed; break;
+        }
+
+        // Check collision with player before moving
+        Rectangle proposedBounds = new Rectangle((int) proposedX, (int) proposedY, width, height);
+        boolean canMove = true;
+
+        // Check tile collision
+        if (tileM != null) {
+            int checkX = (int) proposedX;
+            int checkY = (int) proposedY;
+            if (!tileM.isWalkable(checkX, checkY, width, height)) {
+                // Tile collision detected, can't move
+                canMove = false;
+                if (collisionCooldown == 0) {
+                    // Start collision cooldown and force direction change
+                    collisionCooldown = collisionCooldownMax;
+                    directionChangeTimer = directionChangeInterval; // Force direction change after cooldown
+                }
             }
+        }
 
-            // Check collision with player before moving
-            Rectangle proposedBounds = new Rectangle((int) proposedX, (int) proposedY, width, height);
-            boolean canMove = true;
+        // Check player collision (if player reference exists)
+        if (player != null && canMove) {
+            try {
+                // Get player position using reflection
+                int playerX = (Integer) player.getClass().getMethod("getX").invoke(player);
+                int playerY = (Integer) player.getClass().getMethod("getY").invoke(player);
 
-            // Check tile collision
-            if (tileM != null) {
-                int checkX = (int) proposedX;
-                int checkY = (int) proposedY;
-                if (!tileM.isWalkable(checkX, checkY, width, height)) {
-                    // Tile collision detected, can't move
+                // Create player collision bounds (48x48 centered on player)
+                Rectangle playerBounds = new Rectangle(playerX - 24, playerY - 24, 48, 48);
+
+                if (proposedBounds.intersects(playerBounds)) {
                     canMove = false;
-                }
-            }
-
-            // Check player collision (if player reference exists)
-            if (player != null && canMove) {
-                try {
-                    // Get player position using reflection
-                    int playerX = (Integer) player.getClass().getMethod("getX").invoke(player);
-                    int playerY = (Integer) player.getClass().getMethod("getY").invoke(player);
-
-                    // Create player collision bounds (48x48 centered on player)
-                    Rectangle playerBounds = new Rectangle(playerX - 24, playerY - 24, 48, 48);
-
-                    if (proposedBounds.intersects(playerBounds)) {
-                        canMove = false;
+                    if (collisionCooldown == 0) {
+                        // Start collision cooldown and force direction change
+                        collisionCooldown = collisionCooldownMax;
+                        directionChangeTimer = directionChangeInterval; // Force direction change after cooldown
                     }
-                } catch (Exception e) {
-                    // If reflection fails, allow movement
                 }
+            } catch (Exception e) {
+                // If reflection fails, allow movement
             }
+        }
 
-            // Apply movement if no collision
-            if (canMove) {
-                x = proposedX;
-                y = proposedY;
+        // Apply movement if no collision
+        if (canMove) {
+            x = proposedX;
+            y = proposedY;
 
-                // Animation update
-                frameTimer++;
-                if (frameTimer >= frameDelay) {
-                    currentFrame = (currentFrame + 1) % 2; // only 2 frames
-                    frameTimer = 0;
-                }
-            } else {
-                // Collision detected, stop walking and reset timer
-                isWalking = false;
-                walkTimer = 0;
-            }
-        } else {
-            // Idle animation (slower)
+            // Animation update (walking animation)
             frameTimer++;
-            if (frameTimer >= frameDelay * 2) {
-                currentFrame = (currentFrame + 1) % 2;
+            if (frameTimer >= frameDelay) {
+                currentFrame = (currentFrame + 1) % 2; // only 2 frames
                 frameTimer = 0;
             }
         }

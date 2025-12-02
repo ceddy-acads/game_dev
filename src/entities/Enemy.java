@@ -10,7 +10,7 @@ import java.io.IOException;
 public class Enemy {
 
     public enum EnemyType {
-        BASIC, FAST, TANK, MINI_BOSS
+        BASIC, FAST, TANK, MINI_BOSS, MINOTAUR
     }
 
     private EnemyType type;
@@ -51,7 +51,7 @@ public class Enemy {
     private int attackDelay = 4; // lower = faster animation
     private boolean attacking = false;
     private int attackCooldown = 0; // prevents constant attacking
-    private int attackFrameDelay = 2; // lower = faster attack animation (reduced from 4 to 2)
+    private int attackFrameDelay = 3; // lower = faster attack animation (reduced from 4 to 2)
     private int attackFrameTimer = 0;
 
     //FOR DEATH ANIMATION
@@ -64,55 +64,104 @@ public class Enemy {
     // Freeze effect
     private int freezeTimer = 0; // in frames, 0 = not frozen
 
-    // Collision detection
+    // Collision detection - MUST MATCH PLAYER COLLISION SYSTEM
     private Object tileManager; // Reference to TileManager for collision
     private Object inventory; // Reference to InventoryUI for powerup drops
-    private final int collisionWidth = 48;  // Collision box matching player size
-    private final int collisionHeight = 48;
+    private Object objectManager; // Reference to ObjectManager for spawning dropped powerups
+    private final int collisionWidth = 48;  // Collision box matching player size (48x48)
+    private final int collisionHeight = 48; // Collision box matching player size (48x48)
 
     private void loadSprites() {
         try {
-            // FOR IDLE - Using Idle.png spritesheet (640x128, 5 frames in a single row)
-            BufferedImage idleSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Idle.png"));
-            int idleFrameWidth = 128; // 640 / 5
-            int idleFrameHeight = 128;
-            idleFrames = new BufferedImage[5];
-            for (int i = 0; i < 5; i++) {
-                idleFrames[i] = idleSpriteSheet.getSubimage(i * idleFrameWidth, 0, idleFrameWidth, idleFrameHeight);
+            if (type == EnemyType.MINOTAUR) {
+                // Load Minotaur-specific sprites
+                loadMinotaurSprites();
+            } else {
+                // Load standard enemy sprites
+                loadStandardSprites();
             }
-
-
-            //FOR WALKING - Using Walk.png spritesheet (640x128, 5 frames in a single row)
-            BufferedImage walkSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Walk.png"));
-            int frameWidth = 128; // 640 / 5
-            int frameHeight = 128;
-            walkFrames = new BufferedImage[5];
-            for (int i = 0; i < 5; i++) {
-                walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
-            }
-            
-            // FOR ATTACKING - Using Attack_1.png spritesheet (512x128, 4 frames in a single row)
-            BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
-            int attackFrameWidth = 128; // 512 / 4
-            int attackFrameHeight = 128;
-            attackFrames = new BufferedImage[4];
-            for (int i = 0; i < 4; i++) {
-                attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
-            }
-
-            // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
-            BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
-            int deathFrameWidth = 128; // 512 / 4
-            int deathFrameHeight = 128;
-            deathFrames = new BufferedImage[4];
-            for (int i = 0; i < 4; i++) {
-                deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
-            }
-
-            sprite = idleFrames[0]; // default image
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadStandardSprites() throws IOException {
+        // FOR IDLE - Using Idle.png spritesheet (640x128, 5 frames in a single row)
+        BufferedImage idleSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Idle.png"));
+        int idleFrameWidth = 128; // 640 / 5
+        int idleFrameHeight = 128;
+        idleFrames = new BufferedImage[5];
+        for (int i = 0; i < 5; i++) {
+            idleFrames[i] = idleSpriteSheet.getSubimage(i * idleFrameWidth, 0, idleFrameWidth, idleFrameHeight);
+        }
+
+        //FOR WALKING - Using Walk.png spritesheet (640x128, 5 frames in a single row)
+        BufferedImage walkSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Walk.png"));
+        int frameWidth = 128; // 640 / 5
+        int frameHeight = 128;
+        walkFrames = new BufferedImage[5];
+        for (int i = 0; i < 5; i++) {
+            walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
+        }
+        
+        // FOR ATTACKING - Using Attack_1.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
+        int attackFrameWidth = 128; // 512 / 4
+        int attackFrameHeight = 128;
+        attackFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
+        }
+
+        // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
+        int deathFrameWidth = 128; // 512 / 4
+        int deathFrameHeight = 128;
+        deathFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
+        }
+
+        sprite = idleFrames[0]; // default image
+    }
+
+    private void loadMinotaurSprites() throws IOException {
+        // FOR IDLE - Use first frame of walk animation as idle
+        BufferedImage walkSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/minotaur_walk.png"));
+        int frameWidth = 785 / 8; // 785x94, 8 frames in a single row
+        int frameHeight = 94;
+        
+        // Load walk frames (8 frames)
+        walkFrames = new BufferedImage[8];
+        for (int i = 0; i < 8; i++) {
+            walkFrames[i] = walkSpriteSheet.getSubimage(i * frameWidth, 0, frameWidth, frameHeight);
+        }
+        
+        // Use walk frames as idle frames too (reuse animation)
+        idleFrames = new BufferedImage[8];
+        for (int i = 0; i < 8; i++) {
+            idleFrames[i] = walkFrames[i];
+        }
+        
+        // FOR ATTACKING - Use standard Attack_1.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage attackSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Attack_1.png"));
+        int attackFrameWidth = 128; // 512 / 4
+        int attackFrameHeight = 128;
+        attackFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            attackFrames[i] = attackSpriteSheet.getSubimage(i * attackFrameWidth, 0, attackFrameWidth, attackFrameHeight);
+        }
+
+        // FOR DEATH ANIMATION - Using Dead.png spritesheet (512x128, 4 frames in a single row)
+        BufferedImage deathSpriteSheet = ImageIO.read(getClass().getResourceAsStream("/assets/characters/enemies/Dead.png"));
+        int deathFrameWidth = 128; // 512 / 4
+        int deathFrameHeight = 128;
+        deathFrames = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            deathFrames[i] = deathSpriteSheet.getSubimage(i * deathFrameWidth, 0, deathFrameWidth, deathFrameHeight);
+        }
+
+        sprite = idleFrames[0]; // default image
     }
     public Enemy(int x, int y, EnemyType type) {
         this.x = (double) x;
@@ -142,6 +191,11 @@ public class Enemy {
                 this.hp = 1500;
                 this.speed = 1.05;
                 this.attackDamage = 50; // Increased from 25 to 50
+                break;
+            case MINOTAUR:
+                this.hp = 800;
+                this.speed = 1.4;
+                this.attackDamage = 35; // Strong melee attacker
                 break;
         }
 
@@ -253,11 +307,12 @@ public class Enemy {
                 frameTimer = 0;
             }
             sprite = walkFrames[currentFrame];
-        } else if (dist <= 0.8) { // Attack when reasonably close to player (touching distance)
-            // Close enough to attack or already attacking
+        } else if (dist <= 0.8 || attacking) { // Attack when reasonably close to player OR continue attack animation if already started
+            // Start attack if not already attacking and cooldown is ready
             if (!attacking && attackCooldown <= 0) {
                 attacking = true;
                 attackFrame = 0;
+                attackFrameTimer = 0; // Reset timer to ensure smooth start
                 attackCooldown = 5; // Very short cooldown (5 frames) for continuous attacks when in range
                 System.out.println("Enemy Attacking!");
             }
@@ -283,10 +338,12 @@ public class Enemy {
                     if (attackFrame >= attackFrames.length) {
                         attackFrame = 0;
                         attacking = false;
+                        attackCooldown = 5; // Ensure cooldown after attack completes
                     }
                 }
 
-                if (attacking) {
+                // Always set attack sprite if attacking (prevent stuttering)
+                if (attackFrame < attackFrames.length && attackFrames[attackFrame] != null) {
                     sprite = attackFrames[attackFrame];
                 }
             } else {
@@ -356,26 +413,53 @@ public class Enemy {
         if (inventory == null) return;
 
         Random rand = new Random();
-        // Low probability: 10% chance for basic enemies, 20% for others, 50% for mini boss
-        double dropChance = 0.1;
-        if (type == EnemyType.FAST || type == EnemyType.TANK) {
-            dropChance = 0.2;
-        } else if (type == EnemyType.MINI_BOSS) {
-            dropChance = 0.5;
+        
+        // Determine drop chance based on enemy type
+        // Lower chance for weaker enemies, higher for stronger ones
+        double dropChance = 0.0;
+        switch (type) {
+            case BASIC:
+                dropChance = 0.08; // 8% chance - very low
+                break;
+            case FAST:
+                dropChance = 0.12; // 12% chance - low
+                break;
+            case TANK:
+                dropChance = 0.15; // 15% chance - low-medium
+                break;
+            case MINOTAUR:
+                dropChance = 0.20; // 20% chance - medium
+                break;
+            case MINI_BOSS:
+                dropChance = 0.40; // 40% chance - high (mini boss is rare)
+                break;
         }
 
+        // Roll for drop
         if (rand.nextDouble() < dropChance) {
-            // Drop a random powerup
-            String[] possibleDrops = {"potion_red", "potion_blue"};
-            String drop = possibleDrops[rand.nextInt(possibleDrops.length)];
-
+            // Determine which powerup to drop
+            String drop = selectPowerupDrop(rand);
+            
             try {
                 // Use reflection to call addItem method on InventoryUI
                 inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, drop, 1);
-                System.out.println("Enemy dropped: " + drop);
+                System.out.println("Enemy (" + type + ") dropped: " + drop);
             } catch (Exception e) {
                 System.err.println("Failed to add item to inventory: " + e.getMessage());
             }
+        }
+    }
+
+    private String selectPowerupDrop(Random rand) {
+        // Weighted drop table: more common drops are more likely
+        // potion_red (HP restore) - 60% chance
+        // potion_blue (Mana restore) - 40% chance
+        int roll = rand.nextInt(100);
+        
+        if (roll < 60) {
+            return "potion_red";  // HP potion
+        } else {
+            return "potion_blue"; // Mana potion
         }
     }
 
@@ -407,6 +491,11 @@ public class Enemy {
     // Set InventoryUI reference for powerup drops
     public void setInventory(Object inventory) {
         this.inventory = inventory;
+    }
+
+    // Set ObjectManager reference for spawning dropped powerups
+    public void setObjectManager(Object objectManager) {
+        this.objectManager = objectManager;
     }
 
     // Apply collision-aware movement similar to player

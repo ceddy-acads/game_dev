@@ -80,8 +80,8 @@ public class NPC {
     public NPC(int x, int y) {
         this.x = (double) x;
         this.y = (double) y;
-        this.width = 128; // Set to 256x256 size
-        this.height = 128; // Set to 256x256 size
+        this.width = 96; // Set to 256x256 size
+        this.height = 96; // Set to 256x256 size
         loadSprites();
     }
 
@@ -146,11 +146,9 @@ public class NPC {
             if (!tileM.isWalkable(checkX, checkY, width, height)) {
                 // Tile collision detected, can't move
                 canMove = false;
-                if (collisionCooldown == 0) {
-                    // Start collision cooldown and force direction change
-                    collisionCooldown = collisionCooldownMax;
-                    directionChangeTimer = directionChangeInterval; // Force direction change after cooldown
-                }
+                // Immediately change direction when collision detected
+                directionChangeTimer = directionChangeInterval; // Force immediate direction change
+                collisionCooldown = 10; // Much shorter cooldown (0.17 seconds at 60 FPS)
             }
         }
 

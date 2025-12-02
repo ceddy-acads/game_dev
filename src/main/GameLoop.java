@@ -119,15 +119,16 @@ public class GameLoop extends JLayeredPane implements Runnable {
         enemies.add(new Enemy(600, 800, Enemy.EnemyType.BASIC)); // Lower map position 1 - below wall
         enemies.add(new Enemy(700, 850, Enemy.EnemyType.BASIC)); // Lower map position 2 - below wall
 
-        // Set tile manager and inventory for enemies for collision detection and powerup drops
+        // Set tile manager, inventory, and object manager for enemies for collision detection and powerup drops
         for (Enemy enemy : enemies) {
             enemy.setTileManager(tileM);
             enemy.setInventory(gameInventory);
+            enemy.setObjectManager(objectM);
         }
 
         // Initialize NPCs
         npcs = new ArrayList<>();
-        npcs.add(new NPC(356, 224)); // Place old man at row 13, column 22
+        npcs.add(new NPC(1200, 480)); // Place old man in open grass area (row 6, column 15)
         npcs.get(0).setTileManager(tileM); // Pass TileManager reference for collision
         npcs.get(0).setPlayer(player); // Pass player reference for conversation tracking
         player.setNPCs(npcs); // Pass NPCs reference to player for collision detection
@@ -684,7 +685,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
     }
 
     private void spawnWaveEnemies(int waveNumber) {
-        int enemyCount = 3 + (waveNumber - 1) * 2 + 12; // Add 12 enemies: 15, 17, 19, 21, 23 enemies
+        // Progressive enemy count: Wave 1 = 5, Wave 2 = 8, Wave 3 = 11, Wave 4 = 14, Wave 5 = 17
+        int enemyCount = 5 + (waveNumber - 1) * 3;
         Enemy.EnemyType[] enemyTypes = getEnemyTypesForWave(waveNumber);
 
         // Spawn enemies at the bottom edge of the map (Y coordinates around 2300-2350)
@@ -700,6 +702,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
             Enemy.EnemyType type = enemyTypes[i % enemyTypes.length];
             enemies.add(new Enemy(spawnPositions[i][0], spawnPositions[i][1], type));
         }
+        
+        System.out.println("Wave " + waveNumber + ": Spawned " + enemyCount + " enemies");
     }
 
     private Enemy.EnemyType[] getEnemyTypesForWave(int waveNumber) {
@@ -711,9 +715,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
             case 3:
                 return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.TANK};
             case 4:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
+                return new Enemy.EnemyType[]{Enemy.EnemyType.FAST, Enemy.EnemyType.TANK, Enemy.EnemyType.MINOTAUR};
             case 5:
-                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST, Enemy.EnemyType.TANK};
+                return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC, Enemy.EnemyType.FAST, Enemy.EnemyType.TANK, Enemy.EnemyType.MINOTAUR};
             default:
                 return new Enemy.EnemyType[]{Enemy.EnemyType.BASIC};
         }

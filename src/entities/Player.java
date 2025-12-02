@@ -79,7 +79,7 @@ public class Player {
     private int deathDirection = DOWN;
     private int frameIndex = 0;        // Default for walking
     private float accumulatedAnimationTime = 0f;  // For time-based animation
-    private final float playerFrameDuration = 0.15f;  // Time per frame
+    private final float playerFrameDuration = 0.1f;  // Time per frame
     private boolean deathAnimationFinished = false; // Flag to indicate if death animation is done
     private static final int HURT_FRAMES = 5;
 
@@ -161,7 +161,7 @@ public class Player {
         this.keyH = keyH;
         this.px = startX;
         this.py = startY;
-        this.speed = 3.0;
+        this.speed = 4.0;
         this.hp = maxHp; // Start with full HP
         this.alive = true;
         this.state = IDLE;

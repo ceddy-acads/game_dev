@@ -13,9 +13,9 @@ public class ObjectManager {
     private Random random;
     private int tileSize;
     private int mapWidth;
-    private int mapHeight;
+    private int mapHeight;  
 
-    // Available objects (grass objects and structures)
+    // Available objects (grass objects and structures) - TREES REMOVED
     private String[] objectImages = {
         "/assets/objects/Black_mushrooms1_grass_shadow.png",
         "/assets/objects/Black_mushrooms2_grass_shadow.png",
@@ -29,20 +29,13 @@ public class ObjectManager {
         "/assets/objects/Oval_rock2_grass_shadow.png",
         "/assets/objects/Oval_rock3_grass_shadow.png",
         "/assets/objects/Oval_rock4_grass_shadow.png",
-        "/assets/objects/Oval_rock5_grass_shadow.png",
-        "/assets/objects/Fern_tree2.png",
-        "/assets/objects/Fern_tree3.png",
-        "/assets/objects/Oval_leaf_tree1.png",
-        "/assets/objects/Oval_leaf_tree2.png",
-        "/assets/objects/Oval_leaf_tree3.png"
+        "/assets/objects/Oval_rock5_grass_shadow.png"
     };
 
     private String[] objectNames = {
         "Black Mushrooms 1", "Black Mushrooms 2", "Orange Mushrooms 1", "Orange Mushrooms 2",
         "Caury Pearl 1", "Caury Pearl 2", "Caury White 1", "Caury White 2",
-        "Oval Rock 1", "Oval Rock 2", "Oval Rock 3", "Oval Rock 4", "Oval Rock 5",
-        "Fern Tree 2", "Fern Tree 3",
-        "Oval Leaf Tree 1", "Oval Leaf Tree 2", "Oval Leaf Tree 3"
+        "Oval Rock 1", "Oval Rock 2", "Oval Rock 3", "Oval Rock 4", "Oval Rock 5"
     };
 
     // Define which objects can spawn on which tile types
@@ -94,8 +87,8 @@ public class ObjectManager {
             // Bottom area grass - very sparse
             new int[]{6, 26, 10}, new int[]{10, 28, 11},
 
-            // Center area - minimal
-            new int[]{17, 19, 13}, new int[]{21, 21, 14}
+            // Center area - minimal (replaced trees with rocks)
+            new int[]{17, 19, 9}, new int[]{21, 21, 10}
         };
 
         // Spawn objects at fixed positions with fixed types

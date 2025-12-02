@@ -67,6 +67,7 @@ public class Enemy {
     // Collision detection
     private Object tileManager; // Reference to TileManager for collision
     private Object inventory; // Reference to InventoryUI for powerup drops
+    private Object objectManager; // Reference to ObjectManager for spawn drops
     private final int collisionWidth = 48;  // Collision box matching player size
     private final int collisionHeight = 48;
 
@@ -353,28 +354,38 @@ public class Enemy {
     }
 
     private void dropPowerup() {
-        if (inventory == null) return;
+        if (objectManager == null) return;
 
         Random rand = new Random();
-        // Low probability: 10% chance for basic enemies, 20% for others, 50% for mini boss
-        double dropChance = 0.1;
+        // Drop probabilities
+        double dropChance = 0.20;
         if (type == EnemyType.FAST || type == EnemyType.TANK) {
-            dropChance = 0.2;
+            dropChance = 0.30;
         } else if (type == EnemyType.MINI_BOSS) {
-            dropChance = 0.5;
+            dropChance = 0.70;
         }
 
+        // Drop items
         if (rand.nextDouble() < dropChance) {
-            // Drop a random powerup
+            try {
+                objectManager.getClass().getMethod("addDrop", int.class, int.class).invoke(objectManager, (int) x, (int) y);
+                System.out.println("Enemy dropped: Item at (" + x + "," + y + ")");
+            } catch (Exception e) {
+                System.err.println("Failed to drop item: " + e.getMessage());
+            }
+        }
+
+        // Additionally, drop potions directly to inventory with lower chance
+        double potionDropChance = dropChance * 0.4;
+        if (rand.nextDouble() < potionDropChance && inventory != null) {
             String[] possibleDrops = {"potion_red", "potion_blue"};
             String drop = possibleDrops[rand.nextInt(possibleDrops.length)];
 
             try {
-                // Use reflection to call addItem method on InventoryUI
                 inventory.getClass().getMethod("addItem", String.class, int.class).invoke(inventory, drop, 1);
-                System.out.println("Enemy dropped: " + drop);
+                System.out.println("Enemy directly dropped: " + drop);
             } catch (Exception e) {
-                System.err.println("Failed to add item to inventory: " + e.getMessage());
+                System.err.println("Failed to drop potion: " + e.getMessage());
             }
         }
     }
@@ -407,6 +418,11 @@ public class Enemy {
     // Set InventoryUI reference for powerup drops
     public void setInventory(Object inventory) {
         this.inventory = inventory;
+    }
+
+    // Set ObjectManager reference for spawn drops
+    public void setObjectManager(Object objectManager) {
+        this.objectManager = objectManager;
     }
 
     // Apply collision-aware movement similar to player

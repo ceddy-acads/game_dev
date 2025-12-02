@@ -49,6 +49,8 @@ public class GameLoop extends JLayeredPane implements Runnable {
     private Image skillIcePiercerIcon;
     private Image skillLightningStormIcon;
     private Image skillFireSplashIcon;
+    private Image playerPortrait; // Field to store player portrait
+    private Image swordIcon; // Dropped sword icon
 
     public GameLoop(GameOverCallback gameOverCallback) { // Modified constructor
         this.gameOverCallback = gameOverCallback;
@@ -97,6 +99,10 @@ public class GameLoop extends JLayeredPane implements Runnable {
                 int oldMana = player.getMana();
                 player.restoreMana(50);
                 System.out.println("Used Mana Potion: Mana " + oldMana + " -> " + player.getMana());
+            } else if (itemId.equals("sword")) {
+                // Equip sword: add attack boost
+                player.setEquippedStats(player.getEquippedAttack() + 15, player.getEquippedDefense());
+                System.out.println("Equipped sword, attack increased by 15");
             }
             // Add other consumable effects here as needed
         });
@@ -106,6 +112,9 @@ public class GameLoop extends JLayeredPane implements Runnable {
         dialogueUI.setBounds(0, 0, this.width, this.height);
         dialogueUI.setVisible(false);
         this.add(dialogueUI, JLayeredPane.MODAL_LAYER);
+
+        // Set inventory reference for player
+        player.setInventory(gameInventory);
 
         // Initialize hotbar
         hotbar = new Hotbar(this.width, this.height, gameInventory);
@@ -123,6 +132,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         for (Enemy enemy : enemies) {
             enemy.setTileManager(tileM);
             enemy.setInventory(gameInventory);
+            enemy.setObjectManager(objectM);
         }
 
         // Initialize NPCs
@@ -151,6 +161,14 @@ public class GameLoop extends JLayeredPane implements Runnable {
                 }
             }
         });
+
+        // Load player portrait once
+        try {
+            playerPortrait = new ImageIcon(getClass().getResource("/assets/characters/char_portrait.png")).getImage();
+        } catch (Exception e) {
+            System.err.println("Failed to load player portrait: " + e.getMessage());
+            playerPortrait = null; // Fallback
+        }
     }
 
     public void setSize(int w, int h) {
@@ -284,6 +302,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         cameraX = Math.max(0, Math.min(cameraX, mapPixelWidth - this.width));
         cameraY = Math.max(0, Math.min(cameraY, mapPixelHeight - this.height));
 
+
         // Update player
         player.update(deltaTime);
         player.updateDialogue();
@@ -292,6 +311,27 @@ public class GameLoop extends JLayeredPane implements Runnable {
         for (Enemy enemy : enemies) {
             enemy.update(player.getX(), player.getY(), player, cameraX, cameraY, this.width, this.height);
         }
+
+        // Check for dropped item pickup
+        try {
+            java.util.List<int[]> droppedItems = (java.util.List<int[]>) objectM.getClass().getMethod("getDroppedItems").invoke(objectM);
+            for (int i = droppedItems.size() - 1; i >= 0; i--) {
+                int[] pos = droppedItems.get(i);
+                double distance = Math.sqrt(Math.pow(player.getX() - pos[0], 2) + Math.pow(player.getY() - pos[1], 2));
+                if (distance < 150) { // Increased pickup radius for better gameplay
+                    try {
+                        gameInventory.getClass().getMethod("addItem", String.class, int.class).invoke(gameInventory, "sword", 1);
+                        objectM.getClass().getMethod("removeDrop", int.class).invoke(objectM, i);
+                        System.out.println("Picked up sword! Added to inventory.");
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore if method fails
+        }
+
 
         // Update NPCs
         for (NPC npc : npcs) {
@@ -401,6 +441,34 @@ public class GameLoop extends JLayeredPane implements Runnable {
 
         // Draw world objects
         objectM.draw(g2d, cameraX, cameraY, this.width, this.height);
+
+        // Draw dropped items (larger for better visibility)
+        try {
+            java.util.List<int[]> drops = (java.util.List<int[]>) objectM.getClass().getMethod("getDroppedItems").invoke(objectM);
+            for (int[] pos : drops) {
+                int screenX = pos[0] - cameraX;
+                int screenY = pos[1] - cameraY;
+                if (swordIcon != null) {
+                    // Make sword icon larger and more visible
+                    g2d.drawImage(swordIcon, screenX - 24, screenY - 24, 48, 48, null);
+                    // Add a subtle glow effect
+                    g2d.setColor(new Color(255, 215, 0, 100)); // Gold glow
+                    g2d.fillOval(screenX - 20, screenY - 20, 40, 40);
+                } else {
+                    // Bright yellow circle fallback
+                    g2d.setColor(Color.YELLOW);
+                    g2d.fillOval(screenX - 15, screenY - 15, 30, 30);
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawOval(screenX - 15, screenY - 15, 30, 30);
+                }
+                // Add "SWORD" label
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(new Font("Arial", Font.BOLD, 10));
+                g2d.drawString("SWORD", screenX - 15, screenY + 30);
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
 
         // Adjust player's draw position based on camera
         int playerScreenX = (int) player.px - cameraX; // Use player.px
@@ -604,12 +672,11 @@ public class GameLoop extends JLayeredPane implements Runnable {
         int startX = margin;
         int startY = margin;
 
-        // Draw player icon (char_portrait.png)
-        try {
-            Image playerIcon = new ImageIcon(getClass().getResource("/assets/characters/char_portrait.png")).getImage();
+        // Draw player icon
+        if (playerPortrait != null) {
             // Scale the icon to fit the UI properly
-            g2d.drawImage(playerIcon, startX, startY, iconSize, iconSize, null);
-        } catch (Exception e) {
+            g2d.drawImage(playerPortrait, startX, startY, iconSize, iconSize, null);
+        } else {
             // Fallback: draw a simple colored circle
             g2d.setColor(Color.BLUE);
             g2d.fillOval(startX, startY, iconSize, iconSize);
@@ -650,12 +717,14 @@ public class GameLoop extends JLayeredPane implements Runnable {
             skillIcePiercerIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_icepiercer.png")).getImage();
             skillLightningStormIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_lightningstorm.png")).getImage();
             skillFireSplashIcon = new ImageIcon(getClass().getResource("/assets/ui/skill_firesplash.png")).getImage();
+            swordIcon = new ImageIcon(getClass().getResource("/assets/icons/Icon33.png")).getImage();
         } catch (Exception e) {
-            System.err.println("Failed to load skill icons: " + e.getMessage());
+            System.err.println("Failed to load icons: " + e.getMessage());
             // Fallback to programmatically drawn icons if images fail to load
             skillIcePiercerIcon = null;
             skillLightningStormIcon = null;
             skillFireSplashIcon = null;
+            swordIcon = null;
         }
     }
 
@@ -678,6 +747,7 @@ public class GameLoop extends JLayeredPane implements Runnable {
         for (Enemy enemy : enemies) {
             enemy.setTileManager(tileM);
             enemy.setInventory(gameInventory);
+            enemy.setObjectManager(objectM);
         }
 
         System.out.println("Wave " + currentWave + " started!");
